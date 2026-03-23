@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — FacePresença{% endblock %}
+{% block page_title %}/ dashboard{% endblock %}
+
+{% block topbar_extra %}
+  <span class="badge blue" id="hora-badge">--:--:--</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .cam-wrap {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    aspect-ratio: 16/9;
+  }
+  .cam-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cam-overlay {
+    position: absolute;
+    top: 12px; left: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rec-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .presentes-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; max-height: 320px; overflow-y: auto; }
+  .presente-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } }
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    color: #000; flex-shrink: 0;
+  }
+  .presente-info { flex: 1; min-width: 0; }
+  .presente-nome { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .presente-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="grid-3 mb-6">
+  <div class="card">
+    <div class="card-label">presentes hoje</div>
+    <div class="card-value" id="cnt-presentes">{{ resumo.presentes }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">ausentes</div>
+    <div class="card-value" style="color:var(--danger)" id="cnt-ausentes">{{ resumo.ausentes }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">total cadastrado</div>
+    <div class="card-value" style="color:var(--muted)">{{ resumo.total }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <span class="mono" style="font-size:11px;color:var(--muted)">CÂMERA AO VIVO</span>
+      <span class="badge green">reconhecendo</span>
+    </div>
+    <div class="cam-wrap">
+      <img src="/video_feed" alt="Feed da câmera">
+      <div class="cam-overlay">
+        <span class="rec-dot"></span> AO VIVO
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <span class="mono" style="font-size:11px;color:var(--muted)">PRESENTES AGORA</span>
+      <a href="/relatorio" class="btn btn-ghost" style="padding:6px 14px;font-size:11px">ver tudo →</a>
+    </div>
+    <div class="presentes-list" id="presentes-list">
+      {% for p in [] %}{% endfor %}
+      <div id="empty-msg" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:16px 0;">
+        Nenhum aluno detectado ainda hoje.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+  setInterval(() => {
+    document.getElementById('hora-badge').textContent =
+      new Date().toLocaleTimeString('pt-BR');
+  }, 1000);
+
+  async function atualizarPresentes() {
+    const r   = await fetch('/api/presentes');
+    const arr = await r.json();
+    const resumo = await (await fetch('/api/resumo')).json();
+
+    document.getElementById('cnt-presentes').textContent = resumo.presentes;
+    document.getElementById('cnt-ausentes').textContent  = resumo.ausentes;
+
+    const list = document.getElementById('presentes-list');
+    const empty = document.getElementById('empty-msg');
+
+    if (arr.length === 0) {
+      list.innerHTML = '';
+      list.appendChild(empty);
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = arr.map(p => `
+      <div class="presente-item">
+        <div class="avatar">${p.nome.charAt(0).toUpperCase()}</div>
+        <div class="presente-info">
+          <div class="presente-nome">${p.nome}</div>
+          <div class="presente-meta">${p.matricula} · ${p.turma || '—'} · ${new Date(p.entrada_em).toLocaleTimeString('pt-BR')}</div>
+        </div>
+        <span class="tag tag-entrada">dentro</span>
+      </div>
+    `).join('');
+  }
+
+  atualizarPresentes();
+  setInterval(atualizarPresentes, 5000);
+</script>
+{% endblock %}

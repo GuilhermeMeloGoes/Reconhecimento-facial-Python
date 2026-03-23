@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Relatório de Presença{% endblock %}
+{% block page_title %}/ relatório{% endblock %}
+
+{% block topbar_extra %}
+  <form method="GET" action="/relatorio" style="display:flex;gap:8px;align-items:center">
+    <input class="form-input" type="date" name="data" value="{{ data_filtro }}"
+           style="width:160px;padding:6px 10px;font-size:12px">
+    <button class="btn btn-ghost" style="padding:7px 14px;font-size:11px">filtrar</button>
+  </form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .resumo-row { display:flex; gap:16px; margin-bottom:24px; }
+  .resumo-pill {
+    flex:1; padding:16px 20px;
+    background:var(--bg2); border:1px solid var(--border); border-radius:7px;
+    font-family:var(--mono);
+  }
+  .resumo-pill .v { font-size:28px; font-weight:700; }
+  .resumo-pill .l { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:.08em; text-transform:uppercase; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resumo-row">
+  <div class="resumo-pill">
+    <div class="l">presentes</div>
+    <div class="v" style="color:var(--accent)">{{ resumo.presentes }}</div>
+  </div>
+  <div class="resumo-pill">
+    <div class="l">ausentes</div>
+    <div class="v" style="color:var(--danger)">{{ resumo.ausentes }}</div>
+  </div>
+  <div class="resumo-pill">
+    <div class="l">total</div>
+    <div class="v" style="color:var(--muted)">{{ resumo.total }}</div>
+  </div>
+</div>
+
+<div class="card">
+  {% if registros %}
+  <table>
+    <thead>
+      <tr>
+        <th>horário</th>
+        <th>nome</th>
+        <th>matrícula</th>
+        <th>turma</th>
+        <th>evento</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in registros %}
+      <tr>
+        <td class="mono text-muted" style="font-size:12px">{{ r.timestamp[11:16] }}</td>
+        <td>{{ r.nome }}</td>
+        <td class="mono">{{ r.matricula }}</td>
+        <td class="mono text-muted">{{ r.turma or '—' }}</td>
+        <td><span class="tag tag-{{ r.tipo }}">{{ r.tipo }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted mono" style="font-size:12px;padding:16px 0;">
+    Nenhum registro encontrado para {{ data_filtro }}.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

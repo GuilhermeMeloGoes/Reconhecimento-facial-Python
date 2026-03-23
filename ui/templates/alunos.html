@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Alunos Cadastrados{% endblock %}
+{% block page_title %}/ alunos cadastrados{% endblock %}
+
+{% block topbar_extra %}
+  <a href="/cadastrar" class="btn btn-primary" style="padding:7px 16px;font-size:11px">＋ novo aluno</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if alunos %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>nome</th>
+        <th>matrícula</th>
+        <th>turma</th>
+        <th>cadastrado em</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in alunos %}
+      <tr>
+        <td class="mono text-muted">{{ a.id }}</td>
+        <td>{{ a.nome }}</td>
+        <td class="mono">{{ a.matricula }}</td>
+        <td class="mono">{{ a.turma or '—' }}</td>
+        <td class="mono text-muted" style="font-size:12px">{{ a.cadastrado_em[:16] }}</td>
+        <td>
+          <form method="POST" action="/alunos/{{ a.id }}/deletar"
+                onsubmit="return confirm('Remover {{ a.nome }}?')">
+            <button class="btn btn-danger" style="padding:5px 12px;font-size:11px">remover</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted mono" style="font-size:12px;padding:16px 0;">
+    Nenhum aluno cadastrado. <a href="/cadastrar" style="color:var(--accent)">Cadastre o primeiro →</a>
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
