@@ -7,8 +7,9 @@ from config import FRAMES_CADASTRO, DURACAO_CADASTRO_S, FACE_MODEL, CAMERA_INDEX
 
 
 def capturar_embedding_cadastro():
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
     if not cap.isOpened():
+        cap.release()
         return None, None
 
     embeddings = []
@@ -54,8 +55,9 @@ def capturar_embedding_cadastro():
 
 
 def gerar_frame_reconhecimento():
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
     if not cap.isOpened():
+        cap.release()
         return
 
     try:

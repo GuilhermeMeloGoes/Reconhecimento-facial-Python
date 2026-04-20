@@ -3,7 +3,10 @@ import numpy as np
 import cv2
 
 def capturar_embeddings(duracao_segundos=5, fps_alvo=10):
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    if not cap.isOpened():
+        cap.release()
+        return []
     embeddings = []
     frames_necessarios = duracao_segundos * fps_alvo
 

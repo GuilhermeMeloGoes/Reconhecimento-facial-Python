@@ -30,9 +30,31 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
     ultimo = db.ultimo_registro(conn, aluno_id)
     agora  = datetime.now()
 
-    tipo_id = None
-    if tipo_forçado:
-        # Validação: Impedir 'entrada' se o aluno já estiver dentro, ou 'saida' se estiver fora
+    # Se estiver no modo automático (tipo_forçado=None), 
+    # verificamos se o aluno já registrou entrada hoje e ainda não saiu.
+    if not tipo_forçado:
+        # Lógica automática: alterna baseada no estado atual
+        if ultimo:
+            ultimo_tempo = datetime.fromisoformat(ultimo["timestamp"])
+            delta = agora - ultimo_tempo
+
+            # COOLDOWN GLOBAL: Independente do tipo, evita spam de registros
+            if delta < timedelta(minutes=COOLDOWN_MINUTOS):
+                minutos_restantes = COOLDOWN_MINUTOS - int(delta.total_seconds() / 60)
+                return {
+                    "registrado": False,
+                    "tipo": None,
+                    "motivo": f"Aguarde {minutos_restantes} min para novo registro",
+                    "aluno": {"nome": nome, "matricula": matricula},
+                }
+
+            # Se o último foi entrada, agora é saída. Se foi saída, agora é entrada.
+            tipo = "saida" if ultimo["tipo"] == "entrada" else "entrada"
+        else:
+            # Sem registros prévios, assume entrada
+            tipo = "entrada"
+    else:
+        # Modo Forçado (Botões de Entrada/Saída manual)
         if ultimo:
             if tipo_forçado == "entrada" and ultimo["tipo"] == "entrada":
                 return {
@@ -49,7 +71,6 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
                     "aluno": {"nome": nome, "matricula": matricula},
                 }
         elif tipo_forçado == "saida":
-            # Caso não tenha nenhum registro anterior e tente sair
             return {
                 "registrado": False,
                 "tipo": None,
@@ -58,33 +79,6 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
             }
         
         tipo = tipo_forçado
-    elif ultimo:
-        ultimo_tempo = datetime.fromisoformat(ultimo["timestamp"])
-        delta = agora - ultimo_tempo
-
-        # COOLDOWN GLOBAL: Independente do tipo, evita spam de registros
-        if delta < timedelta(minutes=COOLDOWN_MINUTOS):
-            minutos_restantes = COOLDOWN_MINUTOS - int(delta.total_seconds() / 60)
-            return {
-                "registrado": False,
-                "tipo": None,
-                "motivo": f"Aguarde {minutos_restantes} min para novo registro",
-                "aluno": {"nome": nome, "matricula": matricula},
-            }
-
-        # Lógica automática: alterna o tipo
-        tipo = "saida" if ultimo["tipo"] == "entrada" else "entrada"
-    else:
-        tipo = "entrada"
-
-    # Verificação extra de segurança para o modo automático
-    if not tipo_forçado and ultimo and ultimo["tipo"] == tipo:
-         return {
-            "registrado": False,
-            "tipo": None,
-            "motivo": f"Estado inconsistente detectado",
-            "aluno": {"nome": nome, "matricula": matricula},
-        }
 
     registro_id = db.registrar_evento(conn, aluno_id, tipo)
 
