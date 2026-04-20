@@ -8,6 +8,7 @@
 
 {% block content %}
 <div class="card">
+<<<<<<< HEAD
   {% if alunos %}
   <table>
     <thead>
@@ -45,3 +46,82 @@
   {% endif %}
 </div>
 {% endblock %}
+=======
+  <div id="alunos-container">
+    <p class="text-muted mono" style="font-size:12px;padding:16px 0;">Carregando alunos...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function carregarAlunos() {
+    const container = document.getElementById('alunos-container');
+    try {
+      const res = await fetch('/api/alunos');
+      const alunos = await res.json();
+
+      if (alunos.length === 0) {
+        container.innerHTML = `
+          <p class="text-muted mono" style="font-size:12px;padding:16px 0;">
+            Nenhum aluno cadastrado. <a href="/cadastrar" style="color:var(--accent)">Cadastre o primeiro →</a>
+          </p>`;
+        return;
+      }
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>nome</th>
+              <th>matrícula</th>
+              <th>turma</th>
+              <th>cadastrado em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      alunos.forEach(a => {
+        html += `
+          <tr>
+            <td class="mono text-muted">${a.id}</td>
+            <td>${a.nome}</td>
+            <td class="mono">${a.matricula}</td>
+            <td class="mono">${a.turma || '—'}</td>
+            <td class="mono text-muted" style="font-size:12px">${a.cadastrado_em.substring(0, 16).replace('T', ' ')}</td>
+            <td>
+              <button onclick="deletarAluno(${a.id}, '${a.nome}')" class="btn btn-danger" style="padding:5px 12px;font-size:11px">remover</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    } catch (e) {
+      container.innerHTML = `<p class="text-danger mono">Erro ao carregar lista de alunos.</p>`;
+    }
+  }
+
+  async function deletarAluno(id, nome) {
+    if (!confirm(\`Remover \${nome}?\`)) return;
+
+    try {
+      const res = await fetch(\`/api/alunos/\${id}\`, { method: 'DELETE' });
+      if (res.ok) {
+        carregarAlunos();
+      } else {
+        alert('Erro ao deletar aluno');
+      }
+    } catch (e) {
+      alert('Erro na requisição');
+    }
+  }
+
+  carregarAlunos();
+</script>
+{% endblock %}
+>>>>>>> 86cdd06d05c26a91ceffc025f1e3e9e8f9b6bd2c

@@ -56,7 +56,11 @@
     const container = document.getElementById('relatorio-container');
     
     try {
+<<<<<<< HEAD
       const res = await fetch(`/api/relatorio?data=${data}`);
+=======
+      const res = await fetch(\`/api/relatorio?data=\${data}\`);
+>>>>>>> 86cdd06d05c26a91ceffc025f1e3e9e8f9b6bd2c
       const payload = await res.json();
 
       // Atualiza Cards
@@ -65,11 +69,19 @@
       document.getElementById('resumo-total').textContent     = payload.resumo.total;
 
       if (payload.registros.length === 0) {
+<<<<<<< HEAD
         container.innerHTML = `<p class="text-muted mono" style="font-size:12px;padding:16px 0;">Nenhum registro encontrado para ${data}.</p>`;
         return;
       }
 
       let html = `
+=======
+        container.innerHTML = \`<p class="text-muted mono" style="font-size:12px;padding:16px 0;">Nenhum registro encontrado para \${data}.</p>\`;
+        return;
+      }
+
+      let html = \`
+>>>>>>> 86cdd06d05c26a91ceffc025f1e3e9e8f9b6bd2c
         <table>
           <thead>
             <tr>
@@ -81,6 +93,7 @@
             </tr>
           </thead>
           <tbody>
+<<<<<<< HEAD
       `;
 
       payload.registros.forEach(r => {
@@ -99,6 +112,26 @@
       container.innerHTML = html;
     } catch (e) {
       container.innerHTML = `<p class="text-danger mono">Erro ao carregar relatório.</p>`;
+=======
+      \`;
+
+      payload.registros.forEach(r => {
+        html += \`
+          <tr>
+            <td class="mono text-muted" style="font-size:12px">\${r.timestamp.substring(11, 16)}</td>
+            <td>\${r.nome}</td>
+            <td class="mono">\${r.matricula}</td>
+            <td class="mono text-muted">\${r.turma || '—'}</td>
+            <td><span class="tag tag-\${r.tipo}">\${r.tipo}</span></td>
+          </tr>
+        \`;
+      });
+
+      html += \`</tbody></table>\`;
+      container.innerHTML = html;
+    } catch (e) {
+      container.innerHTML = \`<p class="text-danger mono">Erro ao carregar relatório.</p>\`;
+>>>>>>> 86cdd06d05c26a91ceffc025f1e3e9e8f9b6bd2c
     }
   }
 
