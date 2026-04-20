@@ -4,25 +4,28 @@ import face_recognition
 from config import LIMIAR_DISTANCIA, FACE_MODEL
 
 
-def identificar_frame(frame_bgr, alunos_db):
+def identificar_frame(frame_bgr, alunos_db, upsample=1):
     if not alunos_db:
         return []
 
+    # O frame_bgr já deve vir em escala reduzida se performance for prioridade
     rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
-    small = cv2.resize(rgb, (0, 0), fx=0.5, fy=0.5)
-    locais_small = face_recognition.face_locations(small, model=FACE_MODEL)
+    # Detectar faces no frame (usar HOG para CPU ou CNN para GPU)
+    # upsample=0 é mais rápido mas detecta faces menores com menos precisão
+    locais = face_recognition.face_locations(rgb, number_of_times_to_upsample=0, model=FACE_MODEL)
 
-    if not locais_small:
+    if not locais:
         return []
 
-    locais = [(t*2, r*2, b*2, l*2) for (t, r, b, l) in locais_small]
-    encodings = face_recognition.face_encodings(rgb, locais)
+    # Gerar encodings para as faces detectadas
+    encodings = face_recognition.face_encodings(rgb, locais, model="small") # "small" é 4x mais rápido que "large"
 
     conhecidos = [a[4] for a in alunos_db]
     resultados = []
 
     for enc, box in zip(encodings, locais):
+        # Comparação vetorial rápida
         distancias = face_recognition.face_distance(conhecidos, enc)
         idx = int(np.argmin(distancias))
 

@@ -50,9 +50,9 @@ def get_camera():
     with _cap_lock:
         if _global_cap is None or not _global_cap.isOpened():
             _global_cap = cv2.VideoCapture(CAMERA_INDEX)
+            # Resolução equilibrada para performance
             _global_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             _global_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            # Buffering mínimo para reduzir latência
             _global_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         return _global_cap
 
@@ -60,8 +60,8 @@ def _video_com_reconhecimento(tipo_forçado=None):
     cap = get_camera()
     ultimo_registro = {}
     frame_count = 0
-    # Guardamos os últimos resultados para desenhar sem reprocessar IA
     cache_resultados = []
+    process_scale = 0.5  # Reduzir frame para processamento (IA)
  
     while True:
         ret, frame = cap.read()
@@ -71,41 +71,43 @@ def _video_com_reconhecimento(tipo_forçado=None):
         
         frame_count += 1
         
-        # O IA roda apenas a cada 6 frames (~5 vezes por segundo)
-        # Isso libera a CPU para manter o vídeo fluido
+        # IA escalonada: Reduz latência processando frames intervalados
         if frame_count % 6 == 0:
-            # Reduzimos o frame para 1/4 do tamanho para a IA ser 4x mais rápida
-            small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-            # Converter BGR (OpenCV) para RGB (face_recognition) apenas no frame reduzido
-            rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            # Downscaling para processamento
+            small_frame = cv2.resize(frame, (0, 0), fx=process_scale, fy=process_scale)
             
-            # Identificar no frame pequeno
-            cache_resultados = identificar_frame(rgb_small_frame, alunos_db)
+            # Identificar no frame já reduzido (otimiza CPU)
+            cache_resultados = identificar_frame(small_frame, alunos_db)
             
-            # Ajustar coordenadas de volta para o tamanho original
+            # Ajustar coordenadas de volta para o tamanho de exibição (original)
+            inv_scale = 1.0 / process_scale
             for res in cache_resultados:
                 if "box" in res:
                     top, right, bottom, left = res["box"]
-                    res["box"] = (top*2, right*2, bottom*2, left*2)
+                    res["box"] = (int(top*inv_scale), int(right*inv_scale), 
+                                 int(bottom*inv_scale), int(left*inv_scale))
 
-            # Processar lógica de banco de dados e catraca
+            # Lógica assíncrona para DB/IoT (evita 'stutter' no vídeo)
             for r in cache_resultados:
                 aid = r["aluno_id"]
                 agora = datetime.now()
-                if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 8:
+                if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 5:
                     ultimo_registro[aid] = agora
-                    with _db_lock:
-                        res_att = processar_reconhecimento(conn, r, tipo_forçado=tipo_forçado)
-                        if res_att["registrado"]:
-                            tb_client.enviar_evento_presenca({
-                                **res_att["aluno"],
-                                "id":        res_att["registro_id"],
-                                "tipo":      res_att["tipo"],
-                                "timestamp": res_att["timestamp"],
-                            })
+                    # Offload do processamento de banco e rede para thread secundária
+                    def task(res, t_f):
+                        with _db_lock:
+                            res_att = processar_reconhecimento(conn, res, tipo_forçado=t_f)
+                            if res_att["registrado"]:
+                                tb_client.enviar_evento_presenca({
+                                    **res_att["aluno"],
+                                    "id":        res_att["registro_id"],
+                                    "tipo":      res_att["tipo"],
+                                    "timestamp": res_att["timestamp"],
+                                })
+                    threading.Thread(target=task, args=(r, tipo_forçado), daemon=True).start()
 
-        # Desenhar o quadrado (anotar) usando o cache para não travar o vídeo
-        frame_exibicao = anotar_frame(frame.copy(), cache_resultados)
+        # Desenhar usando cache (mantém FPS alto no browser)
+        frame_exibicao = anotar_frame(frame, cache_resultados)
  
         # Enviar para o navegador com compressão eficiente
         _, buf = cv2.imencode(".jpg", frame_exibicao, [cv2.IMWRITE_JPEG_QUALITY, 60])

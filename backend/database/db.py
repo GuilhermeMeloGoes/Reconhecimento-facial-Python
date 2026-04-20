@@ -28,7 +28,7 @@ def criar_tabelas(conn):
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             aluno_id   INTEGER NOT NULL,
             tipo       TEXT    CHECK(tipo IN ('entrada','saida')) NOT NULL,
-            timestamp  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            timestamp  TIMESTAMP DEFAULT (datetime('now', 'localtime')),
             enviado_tb INTEGER DEFAULT 0,
             FOREIGN KEY(aluno_id) REFERENCES alunos(id)
         );
@@ -79,7 +79,7 @@ def atualizar_aluno(conn, aluno_id, nome, turma):
 
 def registrar_evento(conn, aluno_id, tipo):
     cursor = conn.execute(
-        "INSERT INTO registros (aluno_id, tipo) VALUES (?,?)",
+        "INSERT INTO registros (aluno_id, tipo, timestamp) VALUES (?,?, datetime('now', 'localtime'))",
         (aluno_id, tipo)
     )
     conn.commit()
