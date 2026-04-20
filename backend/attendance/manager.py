@@ -12,17 +12,17 @@ def abrir_catraca_wokwi():
 
     try:
         # Conecta ao servidor RFC2217 do Wokwi
+        # baudrate 9600 para bater com o Arduino
         with serial.serial_for_url(WOKWI_SERIAL_URL, baudrate=9600, timeout=1) as ser:
             # Envia um comando serial para simular o clique do botão ou comando direto
-            # Como seu código de Arduino reage ao botão físico, você pode enviar um byte
-            # Mas vamos adaptar: O Arduino no Wokwi vai ler a Serial
+            # O Arduino no Wokwi vai ler a Serial e abrir se receber 'OPEN\n'
             ser.write(b'OPEN\n')
             time.sleep(0.1)
     except Exception as e:
         print(f"Erro ao conectar ao Wokwi Serial: {e}")
 
 
-def processar_reconhecimento(conn, resultado_facial):
+def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
     aluno_id  = resultado_facial["aluno_id"]
     nome      = resultado_facial["nome"]
     matricula = resultado_facial["matricula"]
@@ -30,7 +30,11 @@ def processar_reconhecimento(conn, resultado_facial):
     ultimo = db.ultimo_registro(conn, aluno_id)
     agora  = datetime.now()
 
-    if ultimo:
+    if tipo_forçado:
+        tipo = tipo_forçado
+        # Opcional: Validar se o aluno já registrou o mesmo tipo recentemente
+        # Mas vamos permitir o强制 de acordo com a página.
+    elif ultimo:
         ultimo_tempo = datetime.fromisoformat(ultimo["timestamp"])
         delta = agora - ultimo_tempo
 

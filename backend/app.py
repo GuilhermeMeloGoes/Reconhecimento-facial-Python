@@ -41,7 +41,7 @@ def recarregar_alunos():
         alunos_db = db.carregar_alunos(conn)
 
  
-def _video_com_reconhecimento():
+def _video_com_reconhecimento(tipo_forçado=None):
     cap = cv2.VideoCapture(CAMERA_INDEX)
     ultimo_registro = {}
  
@@ -59,7 +59,14 @@ def _video_com_reconhecimento():
             if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 10:
                 ultimo_registro[aid] = agora
                 with _db_lock:
-                    resultado_att = processar_reconhecimento(conn, r)
+                    if tipo_forçado:
+                        # Se abrirmos a página de entrada/saída específica,
+                        # ignoramos a alternância automática e forçamos o tipo.
+                        # Precisamos ajustar o manager para aceitar o tipo se fornecido.
+                        resultado_att = processar_reconhecimento(conn, r, tipo_forçado=tipo_forçado)
+                    else:
+                        resultado_att = processar_reconhecimento(conn, r)
+
                 if resultado_att["registrado"]:
                     tb_client.enviar_evento_presenca({
                         **resultado_att["aluno"],
@@ -90,7 +97,8 @@ def saida_page():
  
 @app.route("/video_feed")
 def video_feed():
-    return Response(_video_com_reconhecimento(),
+    tipo = request.args.get("tipo", "entrada")
+    return Response(_video_com_reconhecimento(tipo),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
  
 @app.route("/cadastrar", methods=["GET"])
@@ -192,7 +200,15 @@ def api_relatorio():
 @app.route("/api/presentes")
 def api_presentes():
     return jsonify(alunos_presentes_agora(conn))
- 
+
+@app.route("/api/atividades")
+def api_atividades():
+    with _db_lock:
+        # Pega os últimos 20 registros do dia
+        data = relatorio_dia(conn)
+        # Ordena por timestamp decrescente
+        data = sorted(data, key=lambda x: x["timestamp"], reverse=True)[:20]
+    return jsonify(data)
  
 @app.route("/api/resumo")
 def api_resumo():

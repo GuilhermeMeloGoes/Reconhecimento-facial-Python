@@ -79,14 +79,30 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="flex items-center justify-between mb-4">
-    <span class="mono" style="font-size:11px;color:var(--muted)">PRESENTES AGORA</span>
-    <a href="/relatorio" class="btn btn-ghost" style="padding:6px 14px;font-size:11px">ver relatório completo →</a>
+<div class="grid-2">
+  <!-- Novo Modal de Atividade (Esquerda) -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <span class="mono" style="font-size:11px;color:var(--muted)">ATIVIDADE RECENTE</span>
+      <span class="badge blue" style="font-size:10px">LIVE</span>
+    </div>
+    <div class="presentes-list" id="atividades-list">
+      <div id="empty-atividades" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:16px 0;">
+        Aguardando registros...
+      </div>
+    </div>
   </div>
-  <div class="presentes-list" id="presentes-list">
-    <div id="empty-msg" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:16px 0;">
-      Nenhum aluno detectado ainda hoje.
+
+  <!-- Modal de Presentes Agora (Direita) -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <span class="mono" style="font-size:11px;color:var(--muted)">PRESENTES AGORA</span>
+      <a href="/relatorio" class="btn btn-ghost" style="padding:6px 14px;font-size:11px">ver relatório completo →</a>
+    </div>
+    <div class="presentes-list" id="presentes-list">
+      <div id="empty-msg" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:16px 0;">
+        Nenhum aluno detectado ainda hoje.
+      </div>
     </div>
   </div>
 </div>
@@ -100,45 +116,74 @@
       new Date().toLocaleTimeString('pt-BR');
   }, 1000);
 
-  async function atualizarPresentes() {
+  async function atualizarDashboard() {
     try {
+      // Busca presentes
       const r_pres = await fetch('/api/presentes');
-      const arr = await r_pres.json();
+      const arr_pres = await r_pres.json();
+      
+      // Busca resumo
       const r_res = await fetch('/api/resumo');
       const resumo = await r_res.json();
+
+      // Busca atividades recentes
+      const r_ativ = await fetch('/api/atividades');
+      const arr_ativ = await r_ativ.json();
 
       document.getElementById('cnt-presentes').textContent = resumo.presentes;
       document.getElementById('cnt-ausentes').textContent  = resumo.ausentes;
       document.getElementById('cnt-total').textContent     = resumo.total;
 
-      const list = document.getElementById('presentes-list');
-      const empty = document.getElementById('empty-msg');
+      // Atualiza Lista de Presentes Agora
+      const listPres = document.getElementById('presentes-list');
+      const emptyPres = document.getElementById('empty-msg');
 
-      if (arr.length === 0) {
-        list.innerHTML = '';
-        list.appendChild(empty);
-        empty.style.display = 'block';
-        return;
-      }
-      empty.style.display = 'none';
-
-      list.innerHTML = arr.map(p => `
-        <div class="presente-item">
-          <div class="avatar">${p.nome.charAt(0).toUpperCase()}</div>
-          <div class="presente-info">
-            <div class="presente-nome">${p.nome}</div>
-            <div class="presente-meta">${p.matricula} · ${p.turma || '—'} · ${p.entrada_em.substring(11, 16)}</div>
+      if (arr_pres.length === 0) {
+        listPres.innerHTML = '';
+        listPres.appendChild(emptyPres);
+        emptyPres.style.display = 'block';
+      } else {
+        emptyPres.style.display = 'none';
+        listPres.innerHTML = arr_pres.map(p => `
+          <div class="presente-item">
+            <div class="avatar">${p.nome.charAt(0).toUpperCase()}</div>
+            <div class="presente-info">
+              <div class="presente-nome">${p.nome}</div>
+              <div class="presente-meta">${p.matricula} · ${p.turma || '—'} · ${p.entrada_em.substring(11, 16)}</div>
+            </div>
+            <span class="tag tag-entrada">dentro</span>
           </div>
-          <span class="tag tag-entrada">dentro</span>
-        </div>
-      `).join('');
+        `).join('');
+      }
+
+      // Atualiza Lista de Atividades Recentes
+      const listAtiv = document.getElementById('atividades-list');
+      const emptyAtiv = document.getElementById('empty-atividades');
+
+      if (arr_ativ.length === 0) {
+        listAtiv.innerHTML = '';
+        listAtiv.appendChild(emptyAtiv);
+        emptyAtiv.style.display = 'block';
+      } else {
+        emptyAtiv.style.display = 'none';
+        listAtiv.innerHTML = arr_ativ.map(a => `
+          <div class="presente-item">
+            <div class="avatar">${a.nome.charAt(0).toUpperCase()}</div>
+            <div class="presente-info">
+              <div class="presente-nome">${a.nome}</div>
+              <div class="presente-meta">${a.tipo.toUpperCase()} · ${a.timestamp.substring(11, 19)}</div>
+            </div>
+            <span class="tag ${a.tipo === 'entrada' ? 'tag-entrada' : 'tag-saida'}">${a.tipo}</span>
+          </div>
+        `).join('');
+      }
+
     } catch (e) {
       console.error("Erro ao atualizar dados:", e);
     }
   }
 
-  setInterval(atualizarPresentes, 5000);
-  atualizarPresentes();
-  setInterval(atualizarPresentes, 5000);
+  setInterval(atualizarDashboard, 5000);
+  atualizarDashboard();
 </script>
 {% endblock %}
