@@ -211,6 +211,12 @@
     <a href="/" class="{% if request.path=='/' %}active{% endif %}">
       <span class="icon">◉</span> Dashboard
     </a>
+    <a href="/entrada" class="{% if request.path=='/entrada' %}active{% endif %}">
+      <span class="icon">⎆</span> Entrada
+    </a>
+    <a href="/saida" class="{% if request.path=='/saida' %}active{% endif %}">
+      <span class="icon">⎋</span> Saída
+    </a>
     <a href="/cadastrar" class="{% if request.path=='/cadastrar' %}active{% endif %}">
       <span class="icon">＋</span> Cadastrar
     </a>

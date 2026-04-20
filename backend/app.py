@@ -1,6 +1,6 @@
 import sys, os
-# Garante que a raiz do projeto está no path antes de qualquer import interno
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# Garante que a pasta backend está no path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
  
@@ -22,7 +22,11 @@ from face.recognizer import identificar_frame, anotar_frame
 from attendance.manager import processar_reconhecimento, relatorio_dia, alunos_presentes_agora
 from thingsboard_client.client import ThingsBoardClient
  
-app = Flask(__name__, template_folder="templates", static_folder="static")
+# Ajuste dos caminhos para a pasta frontend
+TEMPLATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "templates"))
+STATIC_DIR   = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "static"))
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.secret_key = SECRET_KEY
  
 conn       = db.get_conn()
@@ -74,10 +78,15 @@ def _video_com_reconhecimento():
  
 @app.route("/")
 def index():
-    resumo  = db.resumo_presenca(conn)
-    tb_ok   = tb_client.conectado
-    return render_template("index.html", resumo=resumo, tb_ok=tb_ok)
+    return render_template("index.html")
  
+@app.route("/entrada")
+def entrada_page():
+    return render_template("entrada.html")
+
+@app.route("/saida")
+def saida_page():
+    return render_template("saida.html")
  
 @app.route("/video_feed")
 def video_feed():
@@ -91,9 +100,10 @@ def cadastrar_form():
  
 @app.route("/cadastrar", methods=["POST"])
 def cadastrar_post():
-    nome      = request.form.get("nome", "").strip()
-    matricula = request.form.get("matricula", "").strip()
-    turma     = request.form.get("turma", "").strip()
+    data = request.get_json() if request.is_json else request.form
+    nome      = data.get("nome", "").strip()
+    matricula = data.get("matricula", "").strip()
+    turma     = data.get("turma", "").strip()
  
     if not nome or not matricula:
         return jsonify({"ok": False, "erro": "Nome e matrícula são obrigatórios"}), 400
@@ -123,29 +133,38 @@ def cadastrar_post():
     return jsonify({"ok": True, "aluno_id": aluno_id, "nome": nome})
  
 @app.route("/alunos")
-def alunos():
+def alunos_page():
+    return render_template("alunos.html")
+ 
+@app.route("/api/alunos")
+def api_listar_alunos():
     lista = db.listar_alunos(conn)
-    return render_template("alunos.html", alunos=lista)
+    return jsonify(lista)
  
  
-@app.route("/alunos/<int:aluno_id>/deletar", methods=["POST"])
-def deletar_aluno(aluno_id):
+@app.route("/api/alunos/<int:aluno_id>", methods=["DELETE"])
+def api_deletar_aluno(aluno_id):
     with _db_lock:
         db.deletar_aluno(conn, aluno_id)
     recarregar_alunos()
-    return redirect(url_for("alunos"))
+    return jsonify({"ok": True})
  
 @app.route("/relatorio")
-def relatorio():
+def relatorio_page():
+    return render_template("relatorio.html")
+
+@app.route("/api/relatorio")
+def api_relatorio():
     data      = request.args.get("data")
     registros = relatorio_dia(conn, data)
     presentes = alunos_presentes_agora(conn)
     resumo    = db.resumo_presenca(conn, data)
-    return render_template("relatorio.html",
-                           registros=registros,
-                           presentes=presentes,
-                           resumo=resumo,
-                           data_filtro=data or datetime.now().strftime("%Y-%m-%d"))
+    return jsonify({
+        "registros": registros,
+        "presentes": presentes,
+        "resumo": resumo,
+        "data_filtro": data or datetime.now().strftime("%Y-%m-%d")
+    })
  
 @app.route("/api/presentes")
 def api_presentes():

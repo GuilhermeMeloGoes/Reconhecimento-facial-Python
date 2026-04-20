@@ -2,8 +2,11 @@ import os
 import sys
 import logging
 
+# Adiciona a pasta backend ao path para que os imports internos funcionem
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
+BACKEND_DIR = os.path.join(BASE_DIR, "backend")
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,7 +15,9 @@ logging.basicConfig(
 )
 
 from config import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
-from ui.app import app
+from app import app
 
 if __name__ == "__main__":
+    print(f"\n--- Iniciando Sistema de Reconhecimento Facial ---")
+    print(f"API e Frontend disponíveis em: http://{FLASK_HOST}:{FLASK_PORT}")
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG, threaded=True)
