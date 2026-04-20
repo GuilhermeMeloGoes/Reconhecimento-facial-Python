@@ -1,0 +1,10 @@
+﻿@app.route("/api/alunos")
+def api_listar_alunos():
+    try:
+        lista = db.listar_alunos(conn)
+        resultado = [dict(r) for r in lista]
+        print(f"DEBUG: Enviando {len(resultado)} alunos via API")
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"DEBUG ERROR: {e}")
+        return jsonify({"ok": False, "erro": str(e)}), 500

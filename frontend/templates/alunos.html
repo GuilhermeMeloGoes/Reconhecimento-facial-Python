@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Alunos Cadastrados{% endblock %}
 {% block page_title %}/ alunos cadastrados{% endblock %}
 
@@ -8,45 +8,6 @@
 
 {% block content %}
 <div class="card">
-<<<<<<< HEAD
-  {% if alunos %}
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>nome</th>
-        <th>matrícula</th>
-        <th>turma</th>
-        <th>cadastrado em</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for a in alunos %}
-      <tr>
-        <td class="mono text-muted">{{ a.id }}</td>
-        <td>{{ a.nome }}</td>
-        <td class="mono">{{ a.matricula }}</td>
-        <td class="mono">{{ a.turma or '—' }}</td>
-        <td class="mono text-muted" style="font-size:12px">{{ a.cadastrado_em[:16] }}</td>
-        <td>
-          <form method="POST" action="/alunos/{{ a.id }}/deletar"
-                onsubmit="return confirm('Remover {{ a.nome }}?')">
-            <button class="btn btn-danger" style="padding:5px 12px;font-size:11px">remover</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="text-muted mono" style="font-size:12px;padding:16px 0;">
-    Nenhum aluno cadastrado. <a href="/cadastrar" style="color:var(--accent)">Cadastre o primeiro →</a>
-  </p>
-  {% endif %}
-</div>
-{% endblock %}
-=======
   <div id="alunos-container">
     <p class="text-muted mono" style="font-size:12px;padding:16px 0;">Carregando alunos...</p>
   </div>
@@ -57,71 +18,117 @@
 <script>
   async function carregarAlunos() {
     const container = document.getElementById('alunos-container');
+    console.log("Iniciando carregamento de alunos...");
     try {
       const res = await fetch('/api/alunos');
-      const alunos = await res.json();
+      console.log("Resposta da API recebida:", res.status);
+      
+      if (!res.ok) {
+        throw new Error(`Erro na API: ${res.status}`);
+      }
 
-      if (alunos.length === 0) {
+      const alunos = await res.json();
+      console.log("Dados dos alunos recebidos:", alunos);
+
+      if (!alunos || alunos.length === 0) {
         container.innerHTML = `
-          <p class="text-muted mono" style="font-size:12px;padding:16px 0;">
-            Nenhum aluno cadastrado. <a href="/cadastrar" style="color:var(--accent)">Cadastre o primeiro →</a>
-          </p>`;
+          <div style="padding: 24px; text-align: center;">
+            <p class="text-muted mono" style="font-size:14px; margin-bottom: 12px;">Nenhum aluno cadastrado no momento.</p>
+            <a href="/cadastrar" class="btn btn-primary" style="display: inline-block;">Cadastre o primeiro aluno →</a>
+          </div>`;
         return;
       }
 
       let html = `
-        <table>
+        <table style="width: 100%; border-collapse: collapse;">
           <thead>
-            <tr>
-              <th>#</th>
-              <th>nome</th>
-              <th>matrícula</th>
-              <th>turma</th>
-              <th>cadastrado em</th>
-              <th></th>
+            <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+              <th style="padding: 12px 8px;">#</th>
+              <th style="padding: 12px 8px;">nome</th>
+              <th style="padding: 12px 8px;">matrícula</th>
+              <th style="padding: 12px 8px;">turma</th>
+              <th style="padding: 12px 8px;">cadastrado em</th>
+              <th style="padding: 12px 8px; text-align: right;">ações</th>
             </tr>
           </thead>
           <tbody>
       `;
 
       alunos.forEach(a => {
+        let dataStr = a.cadastrado_em || '—';
+        if (dataStr !== '—' && dataStr.includes('T')) {
+            dataStr = dataStr.split('.')[0].replace('T', ' ');
+        }
+
         html += `
-          <tr>
-            <td class="mono text-muted">${a.id}</td>
-            <td>${a.nome}</td>
-            <td class="mono">${a.matricula}</td>
-            <td class="mono">${a.turma || '—'}</td>
-            <td class="mono text-muted" style="font-size:12px">${a.cadastrado_em.substring(0, 16).replace('T', ' ')}</td>
-            <td>
-              <button onclick="deletarAluno(${a.id}, '${a.nome}')" class="btn btn-danger" style="padding:5px 12px;font-size:11px">remover</button>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td class="mono text-muted" style="padding: 12px 8px;">${a.id}</td>
+            <td style="padding: 12px 8px;"><strong>${a.nome}</strong></td>
+            <td class="mono" style="padding: 12px 8px;">${a.matricula}</td>
+            <td class="mono" style="padding: 12px 8px;">${a.turma || '—'}</td>
+            <td class="mono text-muted" style="padding: 12px 8px; font-size:12px">${dataStr}</td>
+            <td style="padding: 12px 8px; text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
+              <button onclick="editarAluno(${a.id}, '${a.nome}', '${a.turma || ''}')" class="btn btn-ghost" style="padding:6px 10px; font-size:11px;">editar</button>
+              <button onclick="deletarAluno(${a.id}, '${a.nome}')" class="btn btn-danger" style="padding:6px 10px; font-size:11px;">remover</button>
             </td>
           </tr>
         `;
       });
 
-      html += `</tbody></table>`;
+      html += "</tbody></table>";
       container.innerHTML = html;
     } catch (e) {
-      container.innerHTML = `<p class="text-danger mono">Erro ao carregar lista de alunos.</p>`;
+      console.error("Erro detectado:", e);
+      container.innerHTML = `
+        <div style="padding: 24px; color: var(--danger); font-family: var(--mono);">
+          <p>Erro ao carregar dados dos alunos.</p>
+          <p style="font-size: 11px; margin-top: 8px;">Detalhe: ${e.message}</p>
+          <button onclick="carregarAlunos()" class="btn btn-ghost" style="margin-top: 12px;">Tentar novamente</button>
+        </div>`;
+    }
+  }
+
+  async function editarAluno(id, nomeAtual, turmaAtual) {
+    const novoNome = prompt("Novo nome para " + nomeAtual + ":", nomeAtual);
+    if (novoNome === null) return;
+    
+    const novaTurma = prompt("Nova turma:", turmaAtual);
+    if (novaTurma === null) return;
+    
+    try {
+      const res = await fetch(`/api/alunos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: novoNome, turma: novaTurma })
+      });
+      
+      if (res.ok) {
+        carregarAlunos();
+      } else {
+        const err = await res.json();
+        alert("Erro: " + (err.erro || "Falha ao editar"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro na conexão.");
     }
   }
 
   async function deletarAluno(id, nome) {
-    if (!confirm(\`Remover \${nome}?\`)) return;
-
+    if (!confirm(`Remover aluno ${nome}? Esta ação apagará também os registros de presença.`)) return;
+    
     try {
-      const res = await fetch(\`/api/alunos/\${id}\`, { method: 'DELETE' });
+      const res = await fetch(`/api/alunos/${id}`, { method: 'DELETE' });
       if (res.ok) {
         carregarAlunos();
       } else {
-        alert('Erro ao deletar aluno');
+        alert("Erro ao remover aluno.");
       }
     } catch (e) {
-      alert('Erro na requisição');
+      console.error(e);
     }
   }
 
-  carregarAlunos();
+  window.onload = carregarAlunos;
 </script>
 {% endblock %}
->>>>>>> 86cdd06d05c26a91ceffc025f1e3e9e8f9b6bd2c

@@ -68,6 +68,15 @@ def deletar_aluno(conn, aluno_id):
     conn.execute("DELETE FROM alunos WHERE id=?", (aluno_id,))
     conn.commit()
 
+
+def atualizar_aluno(conn, aluno_id, nome, turma):
+    conn.execute(
+        "UPDATE alunos SET nome=?, turma=? WHERE id=?",
+        (nome, turma, aluno_id)
+    )
+    conn.commit()
+
+
 def registrar_evento(conn, aluno_id, tipo):
     cursor = conn.execute(
         "INSERT INTO registros (aluno_id, tipo) VALUES (?,?)",

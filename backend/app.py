@@ -138,8 +138,14 @@ def alunos_page():
  
 @app.route("/api/alunos")
 def api_listar_alunos():
-    lista = db.listar_alunos(conn)
-    return jsonify(lista)
+    try:
+        lista = db.listar_alunos(conn)
+        resultado = [dict(r) for r in lista]
+        print(f"DEBUG: Enviando {len(resultado)} alunos via API")
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"DEBUG ERROR: {e}")
+        return jsonify({"ok": False, "erro": str(e)}), 500
  
  
 @app.route("/api/alunos/<int:aluno_id>", methods=["DELETE"])
@@ -148,7 +154,24 @@ def api_deletar_aluno(aluno_id):
         db.deletar_aluno(conn, aluno_id)
     recarregar_alunos()
     return jsonify({"ok": True})
- 
+
+
+@app.route("/api/alunos/<int:aluno_id>", methods=["PUT"])
+def api_atualizar_aluno(aluno_id):
+    data = request.get_json()
+    nome = data.get("nome", "").strip()
+    turma = data.get("turma", "").strip()
+
+    if not nome:
+        return jsonify({"ok": False, "erro": "Nome é obrigatório"}), 400
+
+    with _db_lock:
+        db.atualizar_aluno(conn, aluno_id, nome, turma)
+    
+    recarregar_alunos()
+    return jsonify({"ok": True})
+
+
 @app.route("/relatorio")
 def relatorio_page():
     return render_template("relatorio.html")
