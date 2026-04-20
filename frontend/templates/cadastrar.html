@@ -105,12 +105,19 @@
     document.getElementById('status-msg').textContent = 'Olhe para a câmera… capturando 50 frames';
 
     try {
-      const body = new FormData();
-      body.append('nome', nome);
-      body.append('matricula', matricula);
-      body.append('turma', turma);
+      const payload = {
+        nome: nome,
+        matricula: matricula,
+        turma: turma
+      };
 
-      const res  = await fetch('/cadastrar', { method: 'POST', body });
+      const res  = await fetch('/cadastrar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
       const data = await res.json();
 
       clearInterval(interval);

@@ -67,15 +67,15 @@
 <div class="grid-3 mb-6">
   <div class="card">
     <div class="card-label">presentes hoje</div>
-    <div class="card-value" id="cnt-presentes">{{ resumo.presentes }}</div>
+    <div class="card-value" id="cnt-presentes">--</div>
   </div>
   <div class="card">
     <div class="card-label">ausentes</div>
-    <div class="card-value" style="color:var(--danger)" id="cnt-ausentes">{{ resumo.ausentes }}</div>
+    <div class="card-value" style="color:var(--danger)" id="cnt-ausentes">--</div>
   </div>
   <div class="card">
     <div class="card-label">total cadastrado</div>
-    <div class="card-value" style="color:var(--muted)">{{ resumo.total }}</div>
+    <div class="card-value" style="color:var(--muted)" id="cnt-total">--</div>
   </div>
 </div>
 
@@ -118,35 +118,43 @@
   }, 1000);
 
   async function atualizarPresentes() {
-    const r   = await fetch('/api/presentes');
-    const arr = await r.json();
-    const resumo = await (await fetch('/api/resumo')).json();
+    try {
+      const r_pres = await fetch('/api/presentes');
+      const arr = await r_pres.json();
+      const r_res = await fetch('/api/resumo');
+      const resumo = await r_res.json();
 
-    document.getElementById('cnt-presentes').textContent = resumo.presentes;
-    document.getElementById('cnt-ausentes').textContent  = resumo.ausentes;
+      document.getElementById('cnt-presentes').textContent = resumo.presentes;
+      document.getElementById('cnt-ausentes').textContent  = resumo.ausentes;
+      document.getElementById('cnt-total').textContent     = resumo.total;
 
-    const list = document.getElementById('presentes-list');
-    const empty = document.getElementById('empty-msg');
+      const list = document.getElementById('presentes-list');
+      const empty = document.getElementById('empty-msg');
 
-    if (arr.length === 0) {
-      list.innerHTML = '';
-      list.appendChild(empty);
-      return;
-    }
-    empty.style.display = 'none';
+      if (arr.length === 0) {
+        list.innerHTML = '';
+        list.appendChild(empty);
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
 
-    list.innerHTML = arr.map(p => `
-      <div class="presente-item">
-        <div class="avatar">${p.nome.charAt(0).toUpperCase()}</div>
-        <div class="presente-info">
-          <div class="presente-nome">${p.nome}</div>
-          <div class="presente-meta">${p.matricula} · ${p.turma || '—'} · ${new Date(p.entrada_em).toLocaleTimeString('pt-BR')}</div>
+      list.innerHTML = arr.map(p => `
+        <div class="presente-item">
+          <div class="avatar">${p.nome.charAt(0).toUpperCase()}</div>
+          <div class="presente-info">
+            <div class="presente-nome">${p.nome}</div>
+            <div class="presente-meta">${p.matricula} · ${p.turma || '—'} · ${p.entrada_em.substring(11, 16)}</div>
+          </div>
+          <span class="tag tag-entrada">dentro</span>
         </div>
-        <span class="tag tag-entrada">dentro</span>
-      </div>
-    `).join('');
+      `).join('');
+    } catch (e) {
+      console.error("Erro ao atualizar dados:", e);
+    }
   }
 
+  setInterval(atualizarPresentes, 5000);
   atualizarPresentes();
   setInterval(atualizarPresentes, 5000);
 </script>

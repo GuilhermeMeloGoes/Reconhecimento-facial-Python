@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Relatório de Presença{% endblock %}
+{% block page_title %}/ relatório{% endblock %}
+
+{% block topbar_extra %}
+  <div style="display:flex;gap:8px;align-items:center">
+    <input class="form-input" type="date" id="data-filtro"
+           style="width:160px;padding:6px 10px;font-size:12px">
+    <button onclick="carregarRelatorio()" class="btn btn-ghost" style="padding:7px 14px;font-size:11px">filtrar</button>
+  </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .resumo-row { display:flex; gap:16px; margin-bottom:24px; }
+  .resumo-pill {
+    flex:1; padding:16px 20px;
+    background:var(--bg2); border:1px solid var(--border); border-radius:7px;
+    font-family:var(--mono);
+  }
+  .resumo-pill .v { font-size:28px; font-weight:700; }
+  .resumo-pill .l { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:.08em; text-transform:uppercase; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resumo-row">
+  <div class="resumo-pill">
+    <div class="l">presentes</div>
+    <div class="v" id="resumo-presentes" style="color:var(--accent)">--</div>
+  </div>
+  <div class="resumo-pill">
+    <div class="l">ausentes</div>
+    <div class="v" id="resumo-ausentes" style="color:var(--danger)">--</div>
+  </div>
+  <div class="resumo-pill">
+    <div class="l">total</div>
+    <div class="v" id="resumo-total" style="color:var(--muted)">--</div>
+  </div>
+</div>
+
+<div class="card">
+  <div id="relatorio-container">
+    <p class="text-muted mono" style="font-size:12px;padding:16px 0;">Carregando relatório...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Define data de hoje no input ao carregar
+  document.getElementById('data-filtro').value = new Date().toISOString().split('T')[0];
+
+  async function carregarRelatorio() {
+    const data = document.getElementById('data-filtro').value;
+    const container = document.getElementById('relatorio-container');
+    
+    try {
+      const res = await fetch(\`/api/relatorio?data=\${data}\`);
+      const payload = await res.json();
+
+      // Atualiza Cards
+      document.getElementById('resumo-presentes').textContent = payload.resumo.presentes;
+      document.getElementById('resumo-ausentes').textContent  = payload.resumo.ausentes;
+      document.getElementById('resumo-total').textContent     = payload.resumo.total;
+
+      if (payload.registros.length === 0) {
+        container.innerHTML = \`<p class="text-muted mono" style="font-size:12px;padding:16px 0;">Nenhum registro encontrado para \${data}.</p>\`;
+        return;
+      }
+
+      let html = \`
+        <table>
+          <thead>
+            <tr>
+              <th>horário</th>
+              <th>nome</th>
+              <th>matrícula</th>
+              <th>turma</th>
+              <th>evento</th>
+            </tr>
+          </thead>
+          <tbody>
+      \`;
+
+      payload.registros.forEach(r => {
+        html += \`
+          <tr>
+            <td class="mono text-muted" style="font-size:12px">\${r.timestamp.substring(11, 16)}</td>
+            <td>\${r.nome}</td>
+            <td class="mono">\${r.matricula}</td>
+            <td class="mono text-muted">\${r.turma || '—'}</td>
+            <td><span class="tag tag-\${r.tipo}">\${r.tipo}</span></td>
+          </tr>
+        \`;
+      });
+
+      html += \`</tbody></table>\`;
+      container.innerHTML = html;
+    } catch (e) {
+      container.innerHTML = \`<p class="text-danger mono">Erro ao carregar relatório.</p>\`;
+    }
+  }
+
+  carregarRelatorio();
+</script>
+{% endblock %}
