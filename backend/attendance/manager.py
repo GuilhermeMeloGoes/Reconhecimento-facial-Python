@@ -30,14 +30,39 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
     ultimo = db.ultimo_registro(conn, aluno_id)
     agora  = datetime.now()
 
+    tipo_id = None
     if tipo_forçado:
+        # Validação: Impedir 'entrada' se o aluno já estiver dentro, ou 'saida' se estiver fora
+        if ultimo:
+            if tipo_forçado == "entrada" and ultimo["tipo"] == "entrada":
+                return {
+                    "registrado": False,
+                    "tipo": None,
+                    "motivo": f"{nome} já possui uma ENTRADA ativa",
+                    "aluno": {"nome": nome, "matricula": matricula},
+                }
+            if tipo_forçado == "saida" and ultimo["tipo"] == "saida":
+                return {
+                    "registrado": False,
+                    "tipo": None,
+                    "motivo": f"{nome} já registrou SAÍDA",
+                    "aluno": {"nome": nome, "matricula": matricula},
+                }
+        elif tipo_forçado == "saida":
+            # Caso não tenha nenhum registro anterior e tente sair
+            return {
+                "registrado": False,
+                "tipo": None,
+                "motivo": "Nenhuma entrada encontrada para este aluno",
+                "aluno": {"nome": nome, "matricula": matricula},
+            }
+        
         tipo = tipo_forçado
-        # Opcional: Validar se o aluno já registrou o mesmo tipo recentemente
-        # Mas vamos permitir o强制 de acordo com a página.
     elif ultimo:
         ultimo_tempo = datetime.fromisoformat(ultimo["timestamp"])
         delta = agora - ultimo_tempo
 
+        # COOLDOWN GLOBAL: Independente do tipo, evita spam de registros
         if delta < timedelta(minutes=COOLDOWN_MINUTOS):
             minutos_restantes = COOLDOWN_MINUTOS - int(delta.total_seconds() / 60)
             return {
@@ -47,9 +72,19 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
                 "aluno": {"nome": nome, "matricula": matricula},
             }
 
+        # Lógica automática: alterna o tipo
         tipo = "saida" if ultimo["tipo"] == "entrada" else "entrada"
     else:
         tipo = "entrada"
+
+    # Verificação extra de segurança para o modo automático
+    if not tipo_forçado and ultimo and ultimo["tipo"] == tipo:
+         return {
+            "registrado": False,
+            "tipo": None,
+            "motivo": f"Estado inconsistente detectado",
+            "aluno": {"nome": nome, "matricula": matricula},
+        }
 
     registro_id = db.registrar_evento(conn, aluno_id, tipo)
 

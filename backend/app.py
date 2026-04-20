@@ -41,41 +41,74 @@ def recarregar_alunos():
         alunos_db = db.carregar_alunos(conn)
 
  
+# Cache global da câmera para evitar reabertura lenta
+_global_cap = None
+_cap_lock = threading.Lock()
+
+def get_camera():
+    global _global_cap
+    with _cap_lock:
+        if _global_cap is None or not _global_cap.isOpened():
+            _global_cap = cv2.VideoCapture(CAMERA_INDEX)
+            _global_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            _global_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            # Buffering mínimo para reduzir latência
+            _global_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        return _global_cap
+
 def _video_com_reconhecimento(tipo_forçado=None):
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap = get_camera()
     ultimo_registro = {}
+    frame_count = 0
+    # Guardamos os últimos resultados para desenhar sem reprocessar IA
+    cache_resultados = []
  
     while True:
         ret, frame = cap.read()
         if not ret:
-            break
- 
-        resultados = identificar_frame(frame, alunos_db)
-        frame_anotado = anotar_frame(frame, resultados)
- 
-        for r in resultados:
-            aid = r["aluno_id"]
-            agora = datetime.now()
-            if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 10:
-                ultimo_registro[aid] = agora
-                with _db_lock:
-                    if tipo_forçado:
-                        # Se abrirmos a página de entrada/saída específica,
-                        # ignoramos a alternância automática e forçamos o tipo.
-                        # Precisamos ajustar o manager para aceitar o tipo se fornecido.
-                        resultado_att = processar_reconhecimento(conn, r, tipo_forçado=tipo_forçado)
-                    else:
-                        resultado_att = processar_reconhecimento(conn, r)
+            time.sleep(0.01)
+            continue
+        
+        frame_count += 1
+        
+        # O IA roda apenas a cada 6 frames (~5 vezes por segundo)
+        # Isso libera a CPU para manter o vídeo fluido
+        if frame_count % 6 == 0:
+            # Reduzimos o frame para 1/4 do tamanho para a IA ser 4x mais rápida
+            small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+            # Converter BGR (OpenCV) para RGB (face_recognition) apenas no frame reduzido
+            rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            
+            # Identificar no frame pequeno
+            cache_resultados = identificar_frame(rgb_small_frame, alunos_db)
+            
+            # Ajustar coordenadas de volta para o tamanho original
+            for res in cache_resultados:
+                if "box" in res:
+                    top, right, bottom, left = res["box"]
+                    res["box"] = (top*2, right*2, bottom*2, left*2)
 
-                if resultado_att["registrado"]:
-                    tb_client.enviar_evento_presenca({
-                        **resultado_att["aluno"],
-                        "id":        resultado_att["registro_id"],
-                        "tipo":      resultado_att["tipo"],
-                        "timestamp": resultado_att["timestamp"],
-                    })
+            # Processar lógica de banco de dados e catraca
+            for r in cache_resultados:
+                aid = r["aluno_id"]
+                agora = datetime.now()
+                if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 8:
+                    ultimo_registro[aid] = agora
+                    with _db_lock:
+                        res_att = processar_reconhecimento(conn, r, tipo_forçado=tipo_forçado)
+                        if res_att["registrado"]:
+                            tb_client.enviar_evento_presenca({
+                                **res_att["aluno"],
+                                "id":        res_att["registro_id"],
+                                "tipo":      res_att["tipo"],
+                                "timestamp": res_att["timestamp"],
+                            })
+
+        # Desenhar o quadrado (anotar) usando o cache para não travar o vídeo
+        frame_exibicao = anotar_frame(frame.copy(), cache_resultados)
  
-        _, buf = cv2.imencode(".jpg", frame_anotado, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        # Enviar para o navegador com compressão eficiente
+        _, buf = cv2.imencode(".jpg", frame_exibicao, [cv2.IMWRITE_JPEG_QUALITY, 60])
         yield (
             b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" +
             buf.tobytes() + b"\r\n"

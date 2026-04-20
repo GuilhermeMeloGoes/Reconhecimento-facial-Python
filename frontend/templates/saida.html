@@ -83,5 +83,48 @@
 
 {% block extra_js %}
 <script>
+  const statusCard = document.querySelector('.status-card');
+  const statusMsg = document.getElementById('status-msg');
+  let emCooldown = false;
+
+  async function checarUltimaSaida() {
+    if (emCooldown) return;
+    
+    try {
+      const res = await fetch('/api/atividades');
+      const ativs = await res.json();
+      
+      if (ativs.length > 0) {
+        const ultima = ativs[0];
+        const agora = new Date();
+        const registroHora = new Date(ultima.timestamp);
+        
+        // Se o registro ocorreu nos últimos 3 segundos e foi uma SAÍDA
+        if ((agora - registroHora) < 3000 && ultima.tipo === 'saida') {
+          emCooldown = true;
+          
+          // Feedback Visual de Sucesso
+          statusCard.style.background = 'var(--success-bg, #1b4332)';
+          statusCard.style.border = '1px solid var(--success, #2d6a4f)';
+          statusMsg.innerHTML = `
+            <div style="color: #52b788; font-weight: bold; font-size: 16px;">
+              ✅ ATÉ LOGO, ${ultima.nome.toUpperCase()}!
+            </div>
+            <div style="font-size: 11px; margin-top: 4px;">Saída registrada com sucesso.</div>
+          `;
+
+          // Cooldown de 5 segundos
+          setTimeout(() => {
+            statusCard.style.background = 'var(--bg2)';
+            statusCard.style.border = '1px solid var(--border)';
+            statusMsg.innerHTML = '<span class="text-muted">Aguardando detecção para saída...</span>';
+            emCooldown = false;
+          }, 5000);
+        }
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  setInterval(checarUltimaSaida, 2000);
 </script>
 {% endblock %}
