@@ -1,6 +1,25 @@
 from datetime import datetime, timedelta
+import serial
+import time
 from database import db
-from config import COOLDOWN_MINUTOS
+from config import COOLDOWN_MINUTOS, WOKWI_SERIAL_URL, ENABLE_WOKWI
+
+
+def abrir_catraca_wokwi():
+    """Envia comando via Serial (RFC2217) para abrir a catraca no Wokwi."""
+    if not ENABLE_WOKWI:
+        return
+
+    try:
+        # Conecta ao servidor RFC2217 do Wokwi
+        with serial.serial_for_url(WOKWI_SERIAL_URL, baudrate=9600, timeout=1) as ser:
+            # Envia um comando serial para simular o clique do botão ou comando direto
+            # Como seu código de Arduino reage ao botão físico, você pode enviar um byte
+            # Mas vamos adaptar: O Arduino no Wokwi vai ler a Serial
+            ser.write(b'OPEN\n')
+            time.sleep(0.1)
+    except Exception as e:
+        print(f"Erro ao conectar ao Wokwi Serial: {e}")
 
 
 def processar_reconhecimento(conn, resultado_facial):
@@ -29,6 +48,10 @@ def processar_reconhecimento(conn, resultado_facial):
         tipo = "entrada"
 
     registro_id = db.registrar_evento(conn, aluno_id, tipo)
+
+    # Chamar a abertura da catraca no Wokwi se o registro de entrada/saida for feito
+    if registro_id:
+        abrir_catraca_wokwi()
 
     return {
         "registrado":  True,

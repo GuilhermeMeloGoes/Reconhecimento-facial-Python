@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "author": "teцаc",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-nano", "id": "nano", "top": -120, "left": -144.5, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton-6mm",
+      "id": "btn1",
+      "top": -175,
+      "left": -38.4,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    { "type": "wokwi-servo", "id": "servo1", "top": -136.4, "left": 57.6, "attrs": {} }
+  ],
+  "connections": [
+    [ "btn1:2.l", "nano:2", "green", [ "h0" ] ],
+    [ "btn1:1.r", "nano:GND.2", "green", [ "h0.8", "v28.8", "h-9.6" ] ],
+    [ "servo1:GND", "nano:GND.1", "black", [ "h-19.2", "v38.4", "h-38.4" ] ],
+    [
+      "servo1:V+",
+      "nano:5V",
+      "green",
+      [ "h-9.6", "v19.3", "h0", "v19.2", "h-57.6", "v0", "h-9.6" ]
+    ],
+    [ "servo1:PWM", "nano:9", "green", [ "h-28.8", "v-57.4", "h-124.8" ] ]
+  ],
+  "dependencies": {}
+}

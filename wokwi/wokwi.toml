@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+firmware = '\firmware\sketch_apr19a.ino.hex'
+elf = 'path-to-your-firmware.elf'
+rfc2217ServerPort = 4000
