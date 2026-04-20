@@ -17,4 +17,8 @@ FLASK_PORT  = 5000
 FLASK_DEBUG = False
 SECRET_KEY  = os.getenv("SECRET_KEY", "troque-esta-chave-em-producao")
 
-CAMERA_INDEX = 0   
+CAMERA_INDEX = 0
+
+# Configuração Wokwi Serial (RFC2217)
+WOKWI_SERIAL_URL = "rfc2217://localhost:4000"
+ENABLE_WOKWI     = True   
