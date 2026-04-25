@@ -1,63 +1,45 @@
+# Dependências (Os 3 mil arquivos que você viu!)
+node_modules/
+dist/
+dist-ssr/
+*.local
 
+# Python & Ambientes Virtuais (Da sua lista)
 .venv/
 venv/
 env/
 ENV/
+__pycache__/
+*.py[cod]
 
-.env
-.env.*
-!.env.example
-
-
+# Banco de Dados (Da sua lista)
 *.sqlite3
 *.db
 *.db-journal
 
+# Logs e Performance
+*.log
+logs/
+.cache/
+.eslintcache
 
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.pyc
-s
+# Arquivos de Mídia e Uploads (Da sua lista)
 media/
 staticfiles/
-static_root/
-
-
-.cache/
-
 ui/static/fotos/
 fotos/
 *.jpg
 *.jpeg
 *.png
 *.mp4
-*.avi
 
-*.pkl
-*.pickle
-*.npy
-*.h5
-
-thingsboard_credentials.json
-
+# Configurações de IDE (VS Code, IntelliJ, etc)
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
 .DS_Store
-Thumbs.db
 
-*.log
-logs/
-
-.coverage
-htmlcov/
-.pytest_cache/
-.tox/
-
-dist/
-build/
-*.egg-info/
+# Variáveis de Ambiente (Segurança!)
+.env
+.env.*
+!.env.example
