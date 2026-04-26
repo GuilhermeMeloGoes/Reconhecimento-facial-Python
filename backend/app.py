@@ -1,5 +1,4 @@
 import sys, os
-# Garante que a pasta backend está no path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -22,7 +21,6 @@ from face.recognizer import identificar_frame, anotar_frame
 from attendance.manager import processar_reconhecimento, relatorio_dia, alunos_presentes_agora
 from thingsboard_client.client import ThingsBoardClient
  
-# Ajuste dos caminhos para a pasta frontend
 TEMPLATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "templates"))
 STATIC_DIR   = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "static"))
 
@@ -35,7 +33,6 @@ tb_client  = ThingsBoardClient(conn)
 alunos_db  = db.carregar_alunos(conn) 
 _db_lock   = threading.Lock()
 
-# Fila para eventos de reconhecimento (para o modal do frontend)
 _event_queue = []
 _event_lock = threading.Lock()
  
@@ -45,17 +42,37 @@ def recarregar_alunos():
         alunos_db = db.carregar_alunos(conn)
 
  
-# Cache global da câmera para evitar reabertura lenta
 _global_cap = None
 _cap_lock = threading.Lock()
 
-# Estado compartilhado para reconhecimento não-bloqueante
-# Agora usamos um dicionário para gerenciar threads por tipo_forçado
-_recon_threads = {} # {tipo_forçado or "auto": (thread, running_flag)}
+_recon_threads = {}
 _last_frame = None
-_last_results = {} # {tipo_forçado or "auto": results}
+_last_results = {}
 _results_lock = threading.Lock()
 _frame_lock = threading.Lock()
+_stream_clients = {}
+_stream_lock = threading.Lock()
+
+
+def close_camera():
+    global _global_cap
+    with _cap_lock:
+        if _global_cap is not None:
+            try:
+                _global_cap.release()
+            finally:
+                _global_cap = None
+
+
+def stop_all_reconhecimento():
+    global _recon_threads, _last_frame
+    with _stream_lock:
+        _stream_clients.clear()
+    for key, (thread, _) in list(_recon_threads.items()):
+        _recon_threads[key] = (thread, False)
+    with _frame_lock:
+        _last_frame = None
+    close_camera()
 
 def get_camera():
     global _global_cap
@@ -66,14 +83,12 @@ def get_camera():
                 _global_cap.release()
                 _global_cap = None
                 return None
-            # Resolução equilibrada para performance
             _global_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             _global_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             _global_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         return _global_cap
 
 def _recon_worker(tipo_forçado=None):
-    """Thread de processamento pesado de IA."""
     global _last_frame, _last_results, _recon_threads
     ultimo_registro = {}
     process_scale = 0.5
@@ -88,13 +103,10 @@ def _recon_worker(tipo_forçado=None):
                 frame_para_processar = _last_frame.copy()
         
         if frame_para_processar is not None:
-            # Downscaling para processamento
             small_frame = cv2.resize(frame_para_processar, (0, 0), fx=process_scale, fy=process_scale)
             
-            # Identificar no frame (bloqueante mas em thread separada)
             resultados = identificar_frame(small_frame, alunos_db)
             
-            # Ajustar coordenadas
             for res in resultados:
                 if "box" in res:
                     top, right, bottom, left = res["box"]
@@ -104,24 +116,20 @@ def _recon_worker(tipo_forçado=None):
             with _results_lock:
                 _last_results[thread_key] = resultados
 
-            # Lógica para DB/IoT
             for r in resultados:
                 aid = r["aluno_id"]
                 agora = datetime.now()
                 if aid not in ultimo_registro or (agora - ultimo_registro[aid]).seconds > 5:
                     ultimo_registro[aid] = agora
-                    # Offload do processamento de banco e rede
                     def task(res_info, t_forcado):
                         from attendance.manager import processar_reconhecimento
                         from database.db import get_conn
                         
                         conn = get_conn()
                         try:
-                            # Passa res_info diretamente (que já contém aluno_id, nome, etc)
                             res_att = processar_reconhecimento(conn, res_info, t_forcado)
                             if res_att:
                                 try:
-                                    # Notifica ThingsBoard
                                     tb_client.enviar_evento_presenca({
                                         **res_att["aluno"],
                                         "id":        res_att["registro_id"],
@@ -129,7 +137,6 @@ def _recon_worker(tipo_forçado=None):
                                         "timestamp": res_att["timestamp"],
                                     })
                                     
-                                    # Adiciona à fila de eventos para o frontend
                                     with _event_lock:
                                         _event_queue.append({
                                             "id": res_att["registro_id"],
@@ -137,7 +144,6 @@ def _recon_worker(tipo_forçado=None):
                                             "tipo": res_att["tipo"],
                                             "timestamp": res_att["timestamp"]
                                         })
-                                        # Mantém apenas os últimos 10 eventos na fila
                                         if len(_event_queue) > 10:
                                             _event_queue.pop(0)
                                 except Exception as e_inner:
@@ -147,50 +153,60 @@ def _recon_worker(tipo_forçado=None):
                                 
                     threading.Thread(target=task, args=(r, tipo_forçado), daemon=True).start()
         
-        # Dorme um pouco para não fritar a CPU se o processamento for rápido demais
         time.sleep(0.01)
 
 def _video_com_reconhecimento(tipo_forçado=None):
     global _recon_threads, _last_frame, _last_results
-    cap = get_camera()
-    
     thread_key = tipo_forçado if tipo_forçado else "auto"
-    
-    # Inicia thread de reconhecimento para este tipo se não estiver rodando
+    with _stream_lock:
+        _stream_clients[thread_key] = _stream_clients.get(thread_key, 0) + 1
+
     if thread_key not in _recon_threads or not _recon_threads[thread_key][1]:
         running_flag = True
         thread = threading.Thread(target=_recon_worker, args=(tipo_forçado,), daemon=True)
         _recon_threads[thread_key] = (thread, running_flag)
         thread.start()
- 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            time.sleep(0.01)
-            continue
-        
-        # Atualiza o último frame para a thread de IA
-        with _frame_lock:
-            _last_frame = frame.copy()
 
-        # Pega os últimos resultados disponíveis para este tipo (sem bloquear a captura)
-        with _results_lock:
-            cache_atual = _last_results.get(thread_key, []).copy()
+    try:
+        while True:
+            cap = get_camera()
+            if cap is None:
+                time.sleep(0.2)
+                continue
 
-        # Desenha resultados (rápido)
-        frame_exibicao = anotar_frame(frame, cache_atual)
- 
-        # Enviar para o navegador
-        _, buf = cv2.imencode(".jpg", frame_exibicao, [cv2.IMWRITE_JPEG_QUALITY, 60])
-        yield (
-            b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" +
-            buf.tobytes() + b"\r\n"
-        )
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.01)
+                continue
 
- 
-    cap.release()
- 
-    cap.release()
+            with _frame_lock:
+                _last_frame = frame.copy()
+
+            with _results_lock:
+                cache_atual = _last_results.get(thread_key, []).copy()
+
+            frame_exibicao = anotar_frame(frame, cache_atual)
+
+            _, buf = cv2.imencode(".jpg", frame_exibicao, [cv2.IMWRITE_JPEG_QUALITY, 60])
+            yield (
+                b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" +
+                buf.tobytes() + b"\r\n"
+            )
+    finally:
+        should_release_camera = False
+        with _stream_lock:
+            atual = _stream_clients.get(thread_key, 0) - 1
+            if atual <= 0:
+                _stream_clients.pop(thread_key, None)
+                if thread_key in _recon_threads:
+                    thread, _ = _recon_threads[thread_key]
+                    _recon_threads[thread_key] = (thread, False)
+            else:
+                _stream_clients[thread_key] = atual
+            should_release_camera = len(_stream_clients) == 0
+
+        if should_release_camera:
+            close_camera()
  
 @app.route("/")
 def index():
@@ -202,7 +218,7 @@ def reconhecimento_page():
  
 @app.route("/video_feed")
 def video_feed():
-    tipo = request.args.get("tipo") # Pode ser "entrada", "saida" ou None (auto)
+    tipo = request.args.get("tipo")
     if tipo == "auto": tipo = None
     return Response(_video_com_reconhecimento(tipo),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
@@ -214,6 +230,8 @@ def cadastrar_form():
  
 @app.route("/cadastrar", methods=["POST"])
 def cadastrar_post():
+    stop_all_reconhecimento()
+
     data = request.get_json() if request.is_json else request.form
     nome      = data.get("nome", "").strip()
     matricula = data.get("matricula", "").strip()
@@ -310,9 +328,7 @@ def api_presentes():
 @app.route("/api/atividades")
 def api_atividades():
     with _db_lock:
-        # Pega os últimos 20 registros do dia
         data = relatorio_dia(conn)
-        # Ordena por timestamp decrescente
         data = sorted(data, key=lambda x: x["timestamp"], reverse=True)[:20]
     return jsonify(data)
  
@@ -331,7 +347,6 @@ def api_status():
  
 @app.route("/api/events")
 def api_events():
-    """Retorna eventos recentes e limpa a fila."""
     global _event_queue
     with _event_lock:
         events = list(_event_queue)
