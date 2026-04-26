@@ -16,7 +16,7 @@ def capturar_embedding_cadastro():
     melhor_frame = None
     melhor_frame_idx = 0
     inicio = time.time()
-    fps_alvo = FRAMES_CADASTRO / DURACAO_CADASTRO_S  # ~10 fps
+    fps_alvo = FRAMES_CADASTRO / DURACAO_CADASTRO_S
 
     while len(embeddings) < FRAMES_CADASTRO:
         tempo_decorrido = time.time() - inicio
