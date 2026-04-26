@@ -9,7 +9,6 @@ from database import db
  
 logger = logging.getLogger(__name__)
  
-# Carrega config
 import sys, os
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if BASE_DIR not in sys.path:
@@ -27,7 +26,6 @@ class ThingsBoardClient:
         self._conectado = False
         self._testar_conexao()
  
-        # Thread de reenvio de pendentes
         t = threading.Thread(target=self._reenvio_loop, daemon=True)
         t.start()
  

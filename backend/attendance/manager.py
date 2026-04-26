@@ -6,16 +6,11 @@ from config import COOLDOWN_MINUTOS, WOKWI_SERIAL_URL, ENABLE_WOKWI
 
 
 def abrir_catraca_wokwi():
-    """Envia comando via Serial (RFC2217) para abrir a catraca no Wokwi."""
     if not ENABLE_WOKWI:
         return
 
     try:
-        # Conecta ao servidor RFC2217 do Wokwi
-        # baudrate 9600 para bater com o Arduino
         with serial.serial_for_url(WOKWI_SERIAL_URL, baudrate=9600, timeout=1) as ser:
-            # Envia um comando serial para simular o clique do botão ou comando direto
-            # O Arduino no Wokwi vai ler a Serial e abrir se receber 'OPEN\n'
             ser.write(b'OPEN\n')
             time.sleep(0.1)
     except Exception as e:
@@ -30,15 +25,11 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
     ultimo = db.ultimo_registro(conn, aluno_id)
     agora  = datetime.now()
 
-    # Se estiver no modo automático (tipo_forçado=None), 
-    # verificamos se o aluno já registrou entrada hoje e ainda não saiu.
     if not tipo_forçado:
-        # Lógica automática: alterna baseada no estado atual
         if ultimo:
             ultimo_tempo = datetime.fromisoformat(ultimo["timestamp"])
             delta = agora - ultimo_tempo
 
-            # COOLDOWN GLOBAL: Independente do tipo, evita spam de registros
             if delta < timedelta(minutes=COOLDOWN_MINUTOS):
                 minutos_restantes = COOLDOWN_MINUTOS - int(delta.total_seconds() / 60)
                 return {
@@ -48,13 +39,10 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
                     "aluno": {"nome": nome, "matricula": matricula},
                 }
 
-            # Se o último foi entrada, agora é saída. Se foi saída, agora é entrada.
             tipo = "saida" if ultimo["tipo"] == "entrada" else "entrada"
         else:
-            # Sem registros prévios, assume entrada
             tipo = "entrada"
     else:
-        # Modo Forçado (Botões de Entrada/Saída manual)
         if ultimo:
             if tipo_forçado == "entrada" and ultimo["tipo"] == "entrada":
                 return {
@@ -82,7 +70,6 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forçado=None):
 
     registro_id = db.registrar_evento(conn, aluno_id, tipo)
 
-    # Chamar a abertura da catraca no Wokwi se o registro de entrada/saida for feito
     if registro_id:
         abrir_catraca_wokwi()
 
