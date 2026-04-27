@@ -1,6 +1,7 @@
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "database", "presenca.db")
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "database", "presenca.db"))
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 LIMIAR_DISTANCIA    = 0.50
 FRAMES_CADASTRO     = 50     

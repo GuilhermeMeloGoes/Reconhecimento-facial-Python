@@ -104,17 +104,18 @@ def relatorio_dia(conn, data=None):
 
 
 def alunos_presentes_agora(conn):
-    rows = conn.execute("""
+    hoje = "CURRENT_DATE()" if db.is_mysql(conn) else "date('now','localtime')"
+    rows = conn.execute(f"""
         SELECT DISTINCT a.id, a.nome, a.matricula, a.turma,
                r.timestamp as entrada_em
         FROM registros r
         JOIN alunos a ON a.id = r.aluno_id
-        WHERE date(r.timestamp) = date('now','localtime')
+        WHERE date(r.timestamp) = {hoje}
           AND r.tipo = 'entrada'
           AND r.id = (
               SELECT id FROM registros r2
               WHERE r2.aluno_id = a.id
-                AND date(r2.timestamp) = date('now','localtime')
+                AND date(r2.timestamp) = {hoje}
               ORDER BY r2.timestamp DESC LIMIT 1
           )
         ORDER BY r.timestamp DESC
