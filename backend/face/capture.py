@@ -10,6 +10,8 @@ def processar_imagem_base64(imagem_b64):
     Extrai embedding facial de uma imagem base64 enviada pelo cliente (celular).
     Retorna (embedding, foto_b64) ou (None, None) se nenhum rosto for detectado.
     """
+    if "," in imagem_b64:
+        imagem_b64 = imagem_b64.split(",")[1]
     try:
         img_bytes = base64.b64decode(imagem_b64)
     except Exception:
