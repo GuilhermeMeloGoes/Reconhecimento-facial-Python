@@ -1,0 +1,45 @@
+# Dependências (Os 3 mil arquivos que você viu!)
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python & Ambientes Virtuais (Da sua lista)
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+
+# Banco de Dados (Da sua lista)
+*.sqlite3
+*.db
+*.db-journal
+
+# Logs e Performance
+*.log
+logs/
+.cache/
+.eslintcache
+
+# Arquivos de Mídia e Uploads (Da sua lista)
+media/
+staticfiles/
+ui/static/fotos/
+fotos/
+*.jpg
+*.jpeg
+*.png
+*.mp4
+
+# Configurações de IDE (VS Code, IntelliJ, etc)
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Variáveis de Ambiente (Segurança!)
+.env
+.env.*
+!.env.example
