@@ -25,8 +25,8 @@ def _parse_hora(hora_str):
     return dt_time(h, m)
 
 
-HORA_PERMITIDA_INICIO = dt_time(7, 0)   # 07:00
-HORA_PERMITIDA_FIM    = dt_time(17, 0)  # 17:00
+HORA_PERMITIDA_INICIO = dt_time(7, 0)   
+HORA_PERMITIDA_FIM    = dt_time(17, 0) 
 
 
 def _dentro_do_horario_permitido():
@@ -40,11 +40,9 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
     nome      = resultado_facial["nome"]
     matricula = resultado_facial["matricula"]
 
-    # Não registra rostos desconhecidos
     if aluno_id is None:
         return None
 
-    # Bloqueia registros fora do horário de aula
     if not _dentro_do_horario_permitido():
         hora_atual = datetime.now().strftime("%H:%M")
         return {
@@ -63,7 +61,6 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
     agora  = datetime.now()
 
     if not tipo_forcado:
-        # Modo automático: alterna entre entrada/saída com cooldown
         if ultimo:
             ultimo_tempo = datetime.fromisoformat(str(ultimo["timestamp"]))
             delta = agora - ultimo_tempo
@@ -81,7 +78,6 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
         else:
             tipo = "entrada"
     else:
-        # Modo forçado (botão Entrada ou Saída pressionado)
         if ultimo:
             ultimo_data = datetime.fromisoformat(str(ultimo["timestamp"])).date()
             hoje = agora.date()

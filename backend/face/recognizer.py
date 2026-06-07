@@ -20,7 +20,6 @@ def identificar_frame_rgb(rgb, alunos_db, upsample=1):
     )
 
     if not locais:
-        # Tenta com upsample=0 (mais rápido, capta rostos maiores)
         locais = face_recognition.face_locations(
             rgb,
             number_of_times_to_upsample=0,
