@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useApi } from '../hooks/useApi'
 
 const ABAS = [
   { id: 'registros',   label: 'Registros',       icon: <IconList /> },
   { id: 'faltas',      label: 'Faltas',          icon: <IconX /> },
   { id: 'ocorrencias', label: 'Atrasos / Saídas', icon: <IconAlert /> },
+  { id: 'ranking',     label: 'Ranking',         icon: <IconTrophy /> },
 ]
 
 export default function Relatorio() {
@@ -39,7 +41,7 @@ export default function Relatorio() {
   return (
     <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
-      {/* Date filter */}
+      {/* Date filter + Turma + Export */}
       <div style={s.filtroRow} className="fade-in">
         <div style={s.dateWrap}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
@@ -59,6 +61,60 @@ export default function Relatorio() {
             <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
           </svg>
           Filtrar
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Export buttons */}
+        <button
+          className="btn btn-ghost"
+          style={{ padding: '8px 14px', fontSize: '0.6875rem', gap: 6 }}
+          onClick={() => {
+            const token = localStorage.getItem('access_token')
+            fetch(`/api/relatorio/exportar/pdf?data=${data}`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            })
+              .then(r => r.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `relatorio_${data}.pdf`
+                a.click()
+                URL.revokeObjectURL(url)
+              })
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          PDF
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ padding: '8px 14px', fontSize: '0.6875rem', gap: 6 }}
+          onClick={() => {
+            const token = localStorage.getItem('access_token')
+            fetch(`/api/relatorio/exportar/csv?data=${data}`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            })
+              .then(r => r.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `relatorio_${data}.csv`
+                a.click()
+                URL.revokeObjectURL(url)
+              })
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          CSV
         </button>
       </div>
 
@@ -82,6 +138,7 @@ export default function Relatorio() {
           const isActive = aba === a.id
           const badgeCount = a.id === 'faltas' ? faltas.length
             : a.id === 'ocorrencias' ? atrasos.length + saidas_antecipadas.length
+            : a.id === 'ranking' ? 0
             : 0
           return (
             <button
@@ -119,6 +176,7 @@ export default function Relatorio() {
         {!loading && !error && aba === 'registros' && <TabelaRegistros registros={registros} data={data} />}
         {!loading && !error && aba === 'faltas' && <TabelaFaltas faltas={faltas} data={data} />}
         {!loading && !error && aba === 'ocorrencias' && <TabelaOcorrencias atrasos={atrasos} saidas={saidas_antecipadas} data={data} />}
+        {!loading && !error && aba === 'ranking' && <TabelaRanking data={data} />}
       </div>
 
       <style>{`
@@ -307,7 +365,81 @@ function Vazio({ msg, icon, color = 'var(--text-muted)' }) {
   )
 }
 
-/* ── Icons ──────────────────────────────────────────────────────────────── */
+/* ── Icons ────────────────────────────────────────────────────────────── */
+
+function IconTrophy() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  )
+}
+
+function TabelaRanking({ data }) {
+  const [ranking, setRanking] = useState([])
+  const [loadingR, setLoadingR] = useState(true)
+
+  useEffect(() => {
+    const inicio = data.substring(0, 7) + '-01'
+    const token = localStorage.getItem('access_token')
+    fetch(`/api/relatorio/ranking?inicio=${inicio}&fim=${data}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(d => { setRanking(d); setLoadingR(false) })
+      .catch(() => setLoadingR(false))
+  }, [data])
+
+  if (loadingR) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+      {[1,2,3].map(i => <div key={i} className="shimmer" style={{ height: 44, borderRadius: 6 }} />)}
+    </div>
+  )
+
+  if (ranking.length === 0) return <Vazio msg="Nenhum dado de frequência para gerar ranking." />
+
+  return (
+    <table>
+      <thead><tr>
+        <th style={{ width: 50 }}>#</th><th>Nome</th><th>Matrícula</th><th>Turma</th><th>Presenças</th><th>Frequência</th>
+      </tr></thead>
+      <tbody>
+        {ranking.map((r, i) => (
+          <tr key={i} className="fade-in" style={{ animationDelay: `${i * 30}ms` }}>
+            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', fontWeight: 700, color: i < 3 ? 'var(--warning)' : 'var(--text-muted)' }}>
+              {i < 3 ? ['🥇', '🥈', '🥉'][i] : r.posicao}
+            </td>
+            <td style={{ fontWeight: 500 }}>{r.nome}</td>
+            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{r.matricula}</td>
+            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>{r.turma}</td>
+            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{r.dias_presente}/{r.total_dias}</td>
+            <td>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 3,
+                    width: `${r.percentual}%`,
+                    background: r.percentual >= 75 ? 'linear-gradient(90deg, #00E5A0, #00D2FF)' : 'linear-gradient(90deg, #FFB800, #FF4D6D)',
+                    transition: 'width 0.5s var(--ease-out)',
+                  }} />
+                </div>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600,
+                  color: r.percentual >= 75 ? 'var(--success)' : 'var(--warning)',
+                  minWidth: 42, textAlign: 'right',
+                }}>{r.percentual}%</span>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
 
 function IconList() {
   return (
