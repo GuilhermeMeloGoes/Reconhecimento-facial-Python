@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
-/* ── Navigation config ──────────────────────────────────────────────────── */
 const NAV_ITEMS = [
   {
     path: '/',
@@ -54,6 +54,18 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    path: '/usuarios',
+    label: 'Usuários',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
 ]
 
 const CADASTRAR_ICON = (
@@ -71,11 +83,12 @@ const PAGE_TITLES = {
   '/alunos':         'Alunos Cadastrados',
   '/cadastrar':      'Cadastrar Aluno',
   '/relatorio':      'Relatório de Presença',
+  '/usuarios':       'Gerenciar Usuários',
 }
 
-/* ── Layout Component ───────────────────────────────────────────────────── */
 export default function Layout() {
   const location = useLocation()
+  const { usuario, logout } = useAuth()
   const [totalAlunos, setTotalAlunos] = useState(null)
   const [menuAberto, setMenuAberto]   = useState(false)
   const [isMobile, setIsMobile]       = useState(window.innerWidth < 1024)
@@ -86,7 +99,6 @@ export default function Layout() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Fecha menu ao navegar
   useEffect(() => {
     setMenuAberto(false)
   }, [location.pathname])
@@ -179,7 +191,19 @@ export default function Layout() {
               {totalAlunos !== null ? `${totalAlunos} alunos` : 'carregando…'}
             </span>
           </div>
-          <div className="sidebar__version">FacePresença v3.0</div>
+          <button
+            onClick={logout}
+            className="btn btn-ghost"
+            style={{ width: '100%', justifyContent: 'flex-start', gap: 10, padding: '10px 14px', fontSize: '0.8125rem', marginTop: 8 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sair
+          </button>
+          <div className="sidebar__version" style={{ marginTop: 8 }}>FacePresença v3.0</div>
         </div>
       </aside>
 
@@ -203,6 +227,22 @@ export default function Layout() {
           </div>
           <div className="topbar__actions">
             <TopbarExtras location={location} />
+            {usuario && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: 'var(--gradient-main)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.6875rem',
+                  fontWeight: 700, color: '#fff', flexShrink: 0,
+                }}>
+                  {usuario.nome.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  {usuario.nome.split(' ')[0]}
+                </span>
+              </div>
+            )}
           </div>
         </header>
 
