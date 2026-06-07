@@ -2,6 +2,7 @@ import pickle
 import os
 import threading
 import logging
+from typing import Optional
 from urllib.parse import urlparse, unquote
 from config import DATABASE_URL
 
@@ -16,14 +17,11 @@ except Exception:
     DictCursor = None
     MySQLOperationalError = Exception
 
-
-# ── Lock global para acesso thread-safe ao pool de conexões ───────────────────
 _conn_lock = threading.Lock()
 
 
 def _parse_mysql_url(url: str) -> dict:
     """Parseia DATABASE_URL nos formatos mysql:// e mysql+pymysql://"""
-    # Normaliza prefixo para urllib entender
     normalized = url.replace("mysql+pymysql://", "mysql://", 1)
     parsed = urlparse(normalized)
     database = parsed.path.lstrip("/")
@@ -119,9 +117,7 @@ class DBConnection:
         except Exception:
             pass
 
-
-# ── Singleton de parâmetros de conexão (parseados uma vez) ───────────────────
-_mysql_params: dict | None = None
+_mysql_params: Optional[dict] = None
 
 def _get_mysql_params() -> dict:
     global _mysql_params
@@ -150,9 +146,6 @@ def get_conn() -> DBConnection:
     params = _get_mysql_params()
     return DBConnection(params)
 
-
-# ── Helpers internos ──────────────────────────────────────────────────────────
-
 def is_mysql(conn) -> bool:
     return getattr(conn, "is_mysql", False)
 
@@ -163,9 +156,6 @@ def _as_bytes(value):
     if isinstance(value, bytearray):
         return bytes(value)
     return value
-
-
-# ── DDL ───────────────────────────────────────────────────────────────────────
 
 def criar_tabelas(conn: DBConnection):
     conn.executescript("""
@@ -189,13 +179,31 @@ def criar_tabelas(conn: DBConnection):
             CONSTRAINT fk_registros_aluno
                 FOREIGN KEY (aluno_id) REFERENCES alunos(id)
                 ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            nome        VARCHAR(255)  NOT NULL,
+            email       VARCHAR(255)  UNIQUE NOT NULL,
+            senha_hash  VARCHAR(255)  NOT NULL,
+            perfil      ENUM('admin','aluno') NOT NULL DEFAULT 'aluno',
+            aluno_id    INT           DEFAULT NULL,
+            ativo       TINYINT(1)    DEFAULT 1,
+            criado_em   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_usuario_aluno
+                FOREIGN KEY (aluno_id) REFERENCES alunos(id)
+                ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tokens_blacklist (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            jti        VARCHAR(255) UNIQUE NOT NULL,
+            criado_em  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     conn.commit()
     logger.info("MySQL: tabelas verificadas/criadas com sucesso.")
 
-
-# ── CRUD de alunos ────────────────────────────────────────────────────────────
 
 def salvar_aluno(conn: DBConnection, nome, matricula, turma, embedding, foto_path=None):
     blob = pickle.dumps(embedding)
@@ -238,7 +246,6 @@ def listar_alunos(conn: DBConnection):
 
 
 def deletar_aluno(conn: DBConnection, aluno_id):
-    # ON DELETE CASCADE cuida dos registros filhos automaticamente
     conn.execute("DELETE FROM alunos WHERE id = %s", (aluno_id,))
     conn.commit()
 
@@ -249,9 +256,6 @@ def atualizar_aluno(conn: DBConnection, aluno_id, nome, turma):
         (nome, turma, aluno_id),
     )
     conn.commit()
-
-
-# ── Registros de presença ─────────────────────────────────────────────────────
 
 def registrar_evento(conn: DBConnection, aluno_id, tipo):
     cursor = conn.execute(
@@ -301,9 +305,6 @@ def marcar_enviado(conn: DBConnection, registro_id):
         "UPDATE registros SET enviado_tb = 1 WHERE id = %s", (registro_id,)
     )
     conn.commit()
-
-
-# ── Relatórios ────────────────────────────────────────────────────────────────
 
 def resumo_presenca(conn: DBConnection, data=None):
     if data is None:
