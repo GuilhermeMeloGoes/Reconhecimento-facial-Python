@@ -8,6 +8,7 @@ import face_recognition
 import base64
 import threading
 import time
+import logging
 from datetime import datetime
 
 from flask import Flask, request, jsonify, send_from_directory, Response
@@ -92,26 +93,48 @@ _ultimo_registro_ts = {}
 _cooldown_lock = threading.Lock()
 COOLDOWN_RECONHECIMENTO_S = 5
 
+logger = logging.getLogger(__name__)
+
 
 def _init_db():
-    """Inicializa o banco na primeira requisição (lazy loading)."""
+    """Inicializa o banco (lazy loading thread-safe)."""
     global _db_initialized, alunos_db
     if _db_initialized:
         return
     with _db_lock:
         if _db_initialized:
             return
-        c = db.get_conn()
         try:
-            db.criar_tabelas(c)
-            alunos_db = db.carregar_alunos(c)
-        finally:
-            c.close()
-        _db_initialized = True
+            logger.info("Inicializando banco de dados...")
+            c = db.get_conn()
+            try:
+                db.criar_tabelas(c)
+                alunos_db = db.carregar_alunos(c)
+            finally:
+                c.close()
+            _db_initialized = True
+            logger.info("Banco inicializado com %d alunos.", len(alunos_db))
+        except Exception as e:
+            logger.error("Erro ao inicializar banco: %s", e)
+
+
+def _init_db_background():
+    """Dispara inicializacao do banco em thread separada."""
+    t = threading.Thread(target=_init_db, daemon=True)
+    t.start()
+
+
+# Dispara inicializacao em background logo ao importar o modulo.
+# O worker do gunicorn fica livre para responder ao healthcheck
+# enquanto o banco carrega em paralelo.
+_init_db_background()
 
 
 @app.before_request
 def ensure_db():
+    # O healthcheck /api/status responde mesmo sem o banco pronto
+    if request.endpoint == 'api_status':
+        return
     _init_db()
 
 
@@ -273,6 +296,8 @@ def api_events():
 @app.route("/api/status")
 def api_status():
     return jsonify({
+        "status": "online",
+        "db_ready": _db_initialized,
         "alunos_cadastrados": len(alunos_db),
         "hora": datetime.now().isoformat(),
     })
