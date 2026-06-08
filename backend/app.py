@@ -58,11 +58,11 @@ jwt = JWTManager(app)
 @jwt.token_in_blocklist_loader
 def check_if_token_revoked(jwt_header, jwt_payload):
     jti = jwt_payload["jti"]
-    conn = db.get_conn()
+    c = db.get_conn()
     try:
-        return is_token_blacklisted(conn, jti)
+        return is_token_blacklisted(c, jti)
     finally:
-        conn.close()
+        c.close()
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
@@ -81,10 +81,9 @@ app.register_blueprint(auth_bp)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-conn      = db.get_conn()
-db.criar_tabelas(conn)
-alunos_db = db.carregar_alunos(conn)
+alunos_db = []
 _db_lock  = threading.Lock()
+_db_initialized = False
 
 _event_queue = []
 _event_lock  = threading.Lock()
@@ -93,10 +92,38 @@ _ultimo_registro_ts = {}
 _cooldown_lock = threading.Lock()
 COOLDOWN_RECONHECIMENTO_S = 5
 
+
+def _init_db():
+    """Inicializa o banco na primeira requisição (lazy loading)."""
+    global _db_initialized, alunos_db
+    if _db_initialized:
+        return
+    with _db_lock:
+        if _db_initialized:
+            return
+        c = db.get_conn()
+        try:
+            db.criar_tabelas(c)
+            alunos_db = db.carregar_alunos(c)
+        finally:
+            c.close()
+        _db_initialized = True
+
+
+@app.before_request
+def ensure_db():
+    _init_db()
+
+
 def recarregar_alunos():
     global alunos_db
     with _db_lock:
-        alunos_db = db.carregar_alunos(conn)
+        c = db.get_conn()
+        try:
+            alunos_db = db.carregar_alunos(c)
+        finally:
+            c.close()
+
 
 # ── Helper: check admin ─────────────────────────────────────────────────
 def _is_admin():
@@ -288,11 +315,15 @@ def cadastrar_post():
         with open(foto_path, "wb") as f:
             f.write(base64.b64decode(foto_b64))
 
-    with _db_lock:
-        try:
-            aluno_id = db.salvar_aluno(conn, nome, matricula, turma, embedding, foto_path)
-        except Exception as e:
-            return jsonify({"ok": False, "erro": str(e)}), 409
+    c = db.get_conn()
+    try:
+        aluno_id = db.salvar_aluno(c, nome, matricula, turma, embedding, foto_path)
+        c.commit()
+    except Exception as e:
+        c.close()
+        return jsonify({"ok": False, "erro": str(e)}), 409
+    finally:
+        c.close()
 
     recarregar_alunos()
     return jsonify({"ok": True, "aluno_id": aluno_id, "nome": nome})
@@ -303,11 +334,14 @@ def cadastrar_post():
 def api_listar_alunos():
     if not _is_admin():
         return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+    c = db.get_conn()
     try:
-        lista = db.listar_alunos(conn)
+        lista = db.listar_alunos(c)
         return jsonify([dict(r) for r in lista])
     except Exception as e:
         return jsonify({"ok": False, "erro": str(e)}), 500
+    finally:
+        c.close()
 
 
 @app.route("/api/alunos/<int:aluno_id>", methods=["DELETE"])
@@ -315,8 +349,11 @@ def api_listar_alunos():
 def api_deletar_aluno(aluno_id):
     if not _is_admin():
         return jsonify({"ok": False, "erro": "Acesso negado"}), 403
-    with _db_lock:
-        db.deletar_aluno(conn, aluno_id)
+    c = db.get_conn()
+    try:
+        db.deletar_aluno(c, aluno_id)
+    finally:
+        c.close()
     recarregar_alunos()
     return jsonify({"ok": True})
 
@@ -333,8 +370,11 @@ def api_atualizar_aluno(aluno_id):
     if not nome:
         return jsonify({"ok": False, "erro": "Nome é obrigatório"}), 400
 
-    with _db_lock:
-        db.atualizar_aluno(conn, aluno_id, nome, turma)
+    c = db.get_conn()
+    try:
+        db.atualizar_aluno(c, aluno_id, nome, turma)
+    finally:
+        c.close()
 
     recarregar_alunos()
     return jsonify({"ok": True})
@@ -345,12 +385,16 @@ def api_atualizar_aluno(aluno_id):
 def api_relatorio():
     if not _is_admin():
         return jsonify({"ok": False, "erro": "Acesso negado"}), 403
-    data        = request.args.get("data")
-    registros   = relatorio_dia(conn, data)
-    presentes   = alunos_presentes_agora(conn)
-    resumo      = db.resumo_presenca(conn, data)
-    faltas      = relatorio_faltas(conn, data)
-    ocorrencias = relatorio_atrasos_saidas_antecipadas(conn, data)
+    data = request.args.get("data")
+    c = db.get_conn()
+    try:
+        registros   = relatorio_dia(c, data)
+        presentes   = alunos_presentes_agora(c)
+        resumo      = db.resumo_presenca(c, data)
+        faltas      = relatorio_faltas(c, data)
+        ocorrencias = relatorio_atrasos_saidas_antecipadas(c, data)
+    finally:
+        c.close()
     return jsonify({
         "registros":          registros,
         "presentes":          presentes,
@@ -365,22 +409,33 @@ def api_relatorio():
 @app.route("/api/presentes")
 @jwt_required()
 def api_presentes():
-    return jsonify(alunos_presentes_agora(conn))
+    c = db.get_conn()
+    try:
+        return jsonify(alunos_presentes_agora(c))
+    finally:
+        c.close()
 
 
 @app.route("/api/atividades")
 @jwt_required()
 def api_atividades():
-    with _db_lock:
-        data = relatorio_dia(conn)
+    c = db.get_conn()
+    try:
+        data = relatorio_dia(c)
         data = sorted(data, key=lambda x: x["timestamp"], reverse=True)[:20]
+    finally:
+        c.close()
     return jsonify(data)
 
 
 @app.route("/api/resumo")
 @jwt_required()
 def api_resumo():
-    return jsonify(db.resumo_presenca(conn))
+    c = db.get_conn()
+    try:
+        return jsonify(db.resumo_presenca(c))
+    finally:
+        c.close()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
