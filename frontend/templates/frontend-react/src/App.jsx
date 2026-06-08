@@ -13,6 +13,8 @@ import GerenciarUsuarios from './pages/GerenciarUsuarios'
 import PortalDashboard from './pages/portal/PortalDashboard'
 import PortalPresencas from './pages/portal/PortalPresencas'
 import PortalRelatorio from './pages/portal/PortalRelatorio'
+import PortalFilhos from './pages/portal/PortalFilhos'
+import AdminVinculos from './pages/admin/AdminVinculos'
 
 function RootRedirect() {
   const { usuario, loading } = useAuth()
@@ -42,6 +44,7 @@ export default function App() {
             <Route path="/cadastrar"      element={<Cadastrar />} />
             <Route path="/relatorio"      element={<Relatorio />} />
             <Route path="/usuarios"       element={<GerenciarUsuarios />} />
+            <Route path="/admin/vinculos" element={<AdminVinculos />} />
           </Route>
 
           {/* Student/Parent portal routes */}
@@ -53,6 +56,7 @@ export default function App() {
             <Route path="/portal"            element={<PortalDashboard />} />
             <Route path="/portal/presencas"  element={<PortalPresencas />} />
             <Route path="/portal/relatorio"  element={<PortalRelatorio />} />
+            <Route path="/portal/filhos"     element={<PortalFilhos />} />
           </Route>
 
           {/* Catch-all redirect */}

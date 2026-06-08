@@ -40,6 +40,8 @@ from reports.csv_export import (
     gerar_csv_relatorio_dia, gerar_csv_relatorio_periodo,
     gerar_csv_individual,
 )
+from database import parent_links as parent_links_db
+from auth.models import buscar_por_id
 
 TEMPLATE_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "templates"))
 STATIC_DIR   = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "static"))
@@ -786,6 +788,116 @@ def api_meu_relatorio_pdf():
             "Content-Disposition": f"attachment; filename=meu_relatorio_{inicio}_{fim}.pdf"
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  ROTAS DO PORTAL PARA PAIS (acesso aos filhos vinculados)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@app.route("/api/parent/me")
+@jwt_required()
+def api_parent_me():
+    """Retorna dados do usuário e lista de filhos vinculados."""
+    user_id = int(get_jwt_identity())
+    c = db.get_conn()
+    try:
+        filhos = parent_links_db.listar_filhos(c, user_id)
+    finally:
+        c.close()
+
+    return jsonify({"ok": True, "usuario_id": user_id, "filhos": filhos})
+
+
+@app.route("/api/parent/children/<int:aluno_id>/attendance")
+@jwt_required()
+def api_parent_child_attendance(aluno_id):
+    """Retorna relatório individual do filho se o usuário estiver vinculado a ele."""
+    user_id = int(get_jwt_identity())
+
+    inicio = request.args.get("inicio", datetime.now().strftime("%Y-%m-01"))
+    fim    = request.args.get("fim", datetime.now().strftime("%Y-%m-%d"))
+
+    c = db.get_conn()
+    try:
+        # Permitir acesso a admins
+        if not _is_admin():
+            if not parent_links_db.existe_vinculo(c, user_id, aluno_id):
+                return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+
+        dados = relatorio_individual(c, aluno_id, inicio, fim)
+    finally:
+        c.close()
+
+    if not dados:
+        return jsonify({"ok": False, "erro": "Dados não encontrados"}), 404
+    return jsonify(dados)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  ROTAS ADMIN PARA GERENCIAR VÍNCULOS ENTRE USUÁRIOS E ALUNOS
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@app.route("/api/admin/parent-links", methods=["GET"]) 
+@jwt_required()
+def api_admin_list_parent_links():
+    if not _is_admin():
+        return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+    c = db.get_conn()
+    try:
+        rows = parent_links_db.listar_todos(c)
+    finally:
+        c.close()
+    return jsonify(rows)
+
+
+@app.route("/api/admin/parent-links", methods=["POST"]) 
+@jwt_required()
+def api_admin_add_parent_link():
+    if not _is_admin():
+        return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+    data = request.get_json(silent=True) or {}
+    usuario_id = data.get("usuario_id")
+    aluno_id   = data.get("aluno_id")
+    if not usuario_id or not aluno_id:
+        return jsonify({"ok": False, "erro": "usuario_id e aluno_id são obrigatórios"}), 400
+
+    c = db.get_conn()
+    try:
+        # validar existência
+        u = buscar_por_id(c, int(usuario_id))
+        a = db.buscar_aluno_por_id(c, int(aluno_id))
+        if not u:
+            return jsonify({"ok": False, "erro": "Usuário não encontrado"}), 404
+        if not a:
+            return jsonify({"ok": False, "erro": "Aluno não encontrado"}), 404
+
+        parent_links_db.adicionar_vinculo(c, int(usuario_id), int(aluno_id))
+    finally:
+        c.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/parent-links", methods=["DELETE"]) 
+@jwt_required()
+def api_admin_remove_parent_link():
+    if not _is_admin():
+        return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+    data = request.get_json(silent=True) or {}
+    usuario_id = data.get("usuario_id")
+    aluno_id   = data.get("aluno_id")
+    if not usuario_id or not aluno_id:
+        return jsonify({"ok": False, "erro": "usuario_id e aluno_id são obrigatórios"}), 400
+
+    c = db.get_conn()
+    try:
+        parent_links_db.remover_vinculo(c, int(usuario_id), int(aluno_id))
+    finally:
+        c.close()
+    return jsonify({"ok": True})
+
+
 
 
 if __name__ == "__main__":

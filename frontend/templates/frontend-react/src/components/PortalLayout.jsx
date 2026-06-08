@@ -36,6 +36,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    path: '/portal/filhos',
+    label: 'Meus filhos',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a5 5 0 0 1 5 5v3" />
+        <path d="M7 21v-2a4 4 0 0 1 4-4h0" />
+        <circle cx="9" cy="7" r="4" />
+      </svg>
+    ),
+  },
 ]
 
 const PAGE_TITLES = {
