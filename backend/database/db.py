@@ -254,8 +254,9 @@ def listar_alunos(conn: DBConnection):
         "FROM alunos ORDER BY nome"
     )
 
-
-def deletar_aluno(conn: DBConnection, aluno_id):
+    
+def deletar_aluno(conn, aluno_id):
+    conn.execute("DELETE FROM registros WHERE aluno_id = %s", (aluno_id,))
     conn.execute("DELETE FROM alunos WHERE id = %s", (aluno_id,))
     conn.commit()
 
