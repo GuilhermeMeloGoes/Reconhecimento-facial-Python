@@ -1,7 +1,19 @@
 import { useState, useCallback, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function PortalRelatorio() {
+  const { usuario } = useAuth()
+
+  // Proteger página: apenas alunos podem acessar
+  if (!usuario?.aluno_id) {
+    return <Navigate to="/portal/filhos" replace />
+  }
+
+  return <RelatorioContent />
+}
+
+function RelatorioContent() {
   const { usuario } = useAuth()
   const hoje = new Date()
 

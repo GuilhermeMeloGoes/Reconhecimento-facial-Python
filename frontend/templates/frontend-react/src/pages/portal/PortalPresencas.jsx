@@ -1,7 +1,19 @@
 import { useState, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function PortalPresencas() {
+  const { usuario } = useAuth()
+
+  // Proteger página: apenas alunos podem acessar
+  if (!usuario?.aluno_id) {
+    return <Navigate to="/portal/filhos" replace />
+  }
+
+  return <PresencasContent />
+}
+
+function PresencasContent() {
   const { usuario } = useAuth()
   const hoje = new Date()
 

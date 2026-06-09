@@ -5,6 +5,20 @@ import { useApi } from '../../hooks/useApi'
 export default function PortalDashboard() {
   const { usuario } = useAuth()
   const aluno_id = usuario?.aluno_id
+  const ehAluno = Boolean(aluno_id)
+
+  // Se é aluno, mostrar o dashboard do aluno
+  if (ehAluno) {
+    return <DashboardAluno />
+  }
+
+  // Se é pai, mostrar o dashboard do pai
+  return <DashboardPai />
+}
+
+function DashboardAluno() {
+  const { usuario } = useAuth()
+  const aluno_id = usuario?.aluno_id
 
   const hoje = new Date()
   const inicioMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`
@@ -37,19 +51,6 @@ export default function PortalDashboard() {
       .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
       .slice(0, 5)
   }, [registros])
-
-  if (!aluno_id) {
-    return (
-      <div className="card fade-in" style={{ textAlign: 'center', padding: 48 }}>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 16, opacity: 0.6 }}>
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-          <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-        </svg>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>Nenhum aluno vinculado a esta conta.</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Contate o administrador.</p>
-      </div>
-    )
-  }
 
   const isLoading = loadingP || loadingC
 
@@ -135,11 +136,11 @@ export default function PortalDashboard() {
               <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            Calendário — {meses[hoje.getMonth()]}
+            Calendário — {meses[new Date().getMonth()]}
           </span>
           <CalendarioMini
-            ano={hoje.getFullYear()}
-            mes={hoje.getMonth()}
+            ano={new Date().getFullYear()}
+            mes={new Date().getMonth()}
             diasPresentes={diasCalendario}
             loading={loadingC}
           />
@@ -176,6 +177,108 @@ export default function PortalDashboard() {
             )}
           </div>
         </div>
+      </div>
+    </>
+  )
+}
+
+function DashboardPai() {
+  const { usuario } = useAuth()
+  const [filhos, setFilhos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    carregarFilhos()
+  }, [])
+
+  async function carregarFilhos() {
+    setError(null)
+    try {
+      const token = localStorage.getItem('access_token')
+      const res = await fetch('/api/parent/me', { headers: { 'Authorization': `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`Erro ${res.status}`)
+      const data = await res.json()
+      setFilhos(data.filhos || [])
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      {/* Welcome card */}
+      <div className="card card-glow fade-in" style={s.welcomeCard}>
+        <div style={s.welcomeInner}>
+          <div style={s.welcomeAvatar}>
+            {(usuario?.nome || 'R').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={s.welcomeTitle}>
+              Bem-vindo, {(usuario?.nome || 'Responsável').split(' ')[0]}! 👋
+            </div>
+            <div style={s.welcomeSub}>
+              Acompanhe a frequência dos seus filhos
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Children list */}
+      <div className="card fade-in" style={{ marginTop: 20 }}>
+        <span style={s.sectionLabel}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ marginRight: 6, opacity: 0.5 }}>
+            <path d="M12 2a5 5 0 0 1 5 5v3" />
+            <path d="M7 21v-2a4 4 0 0 1 4-4h0" />
+            <circle cx="9" cy="7" r="4" />
+          </svg>
+          Meus Filhos
+        </span>
+
+        {error && (
+          <div style={{ marginTop: 16, padding: 16, background: 'rgba(255,77,109,0.1)', borderRadius: 6, color: 'var(--danger)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+            Erro: {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+            {[1, 2, 3].map(i => <div key={i} className="shimmer" style={{ height: 60, borderRadius: 6 }} />)}
+          </div>
+        ) : filhos.length === 0 ? (
+          <div style={{ marginTop: 16, padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.4, marginBottom: 12, marginLeft: 'auto', marginRight: 'auto', display: 'block' }}>
+              <path d="M12 2a5 5 0 0 1 5 5v3" />
+              <path d="M7 21v-2a4 4 0 0 1 4-4h0" />
+              <circle cx="9" cy="7" r="4" />
+            </svg>
+            <p>Nenhum filho vinculado a sua conta.</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 8 }}>Contate o administrador para vincular seus filhos.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+            {filhos.map((filho, i) => (
+              <div key={filho.id} className="fade-in" style={{ ...s.filhoItem, animationDelay: `${i * 60}ms` }}>
+                <div style={s.filhoAvatar}>{filho.nome.charAt(0).toUpperCase()}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{filho.nome}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    Matrícula: {filho.matricula} · Turma: {filho.turma}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 16, padding: 16, background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.15)', borderRadius: 'var(--radius-md)' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>ℹ️ Dica</div>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+          Acesse <strong>Meus Filhos</strong> no menu lateral para ver detalhes de frequência e relatórios de cada filho.
+        </p>
       </div>
     </>
   )
@@ -397,4 +500,28 @@ const s = {
     borderRadius: '50%',
     flexShrink: 0,
   },
+  filhoItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+  },
+  filhoAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #00E5A0, #00D2FF)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    color: '#000',
+    flexShrink: 0,
+  },
 }
+

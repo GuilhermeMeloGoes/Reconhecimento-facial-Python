@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-const NAV_ITEMS = [
+// Menu para alunos (usuários com aluno_id)
+const NAV_ITEMS_ALUNO = [
   {
     path: '/portal',
     label: 'Meu Painel',
@@ -36,6 +37,22 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+]
+
+// Menu para pais (usuários sem aluno_id)
+const NAV_ITEMS_PAI = [
+  {
+    path: '/portal',
+    label: 'Meu Painel',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    ),
+  },
   {
     path: '/portal/filhos',
     label: 'Meus filhos',
@@ -53,6 +70,7 @@ const PAGE_TITLES = {
   '/portal':            'Meu Painel',
   '/portal/presencas':  'Minhas Presenças',
   '/portal/relatorio':  'Meu Relatório',
+  '/portal/filhos':     'Meus Filhos',
 }
 
 export default function PortalLayout() {
@@ -60,6 +78,10 @@ export default function PortalLayout() {
   const { usuario, logout } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
   const [isMobile, setIsMobile]     = useState(window.innerWidth < 1024)
+
+  // Determinar se é aluno ou pai baseado na presença de aluno_id
+  const ehAluno = Boolean(usuario?.aluno_id)
+  const NAV_ITEMS = ehAluno ? NAV_ITEMS_ALUNO : NAV_ITEMS_PAI
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 1024)
@@ -97,9 +119,9 @@ export default function PortalLayout() {
           </div>
           <div className="sidebar__logo-text">
             <span className="sidebar__logo-name" style={{ background: 'linear-gradient(135deg, #00E5A0, #00D2FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              Portal do Aluno
+              {ehAluno ? 'Portal do Aluno' : 'Portal do Responsável'}
             </span>
-            <span className="sidebar__logo-sub">{usuario?.nome || 'Aluno'}</span>
+            <span className="sidebar__logo-sub">{usuario?.nome || 'Usuário'}</span>
           </div>
         </div>
 
@@ -156,7 +178,7 @@ export default function PortalLayout() {
               <div style={ps.userAvatar}>
                 {(usuario?.nome || 'A').charAt(0).toUpperCase()}
               </div>
-              <span style={ps.userName}>{usuario?.nome || 'Aluno'}</span>
+              <span style={ps.userName}>{usuario?.nome || 'Usuário'}</span>
             </div>
           </div>
         </header>
