@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useApi } from '../hooks/useApi'
+import { useApi, apiFetch } from '../hooks/useApi'
 
 const ABAS = [
   { id: 'registros',   label: 'Registros',       icon: <IconList /> },
@@ -16,13 +16,57 @@ export default function Relatorio() {
   const [error, setError]     = useState(null)
   const [aba, setAba]         = useState('registros')
 
+  async function downloadRelatorio(url, filename) {
+    try {
+      const token = localStorage.getItem('access_token')
+      let res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (res.status === 401) {
+        // Tenta refresh e retenta
+        const refreshToken = localStorage.getItem('refresh_token')
+        if (refreshToken) {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${refreshToken}`,
+            },
+          })
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json()
+            localStorage.setItem('access_token', refreshData.access_token)
+            res = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${refreshData.access_token}` },
+            })
+          } else {
+            window.location.href = '/login'
+            return
+          }
+        } else {
+          window.location.href = '/login'
+          return
+        }
+      }
+      if (!res.ok) throw new Error(`Erro ${res.status}`)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch (e) {
+      alert('Erro ao exportar: ' + e.message)
+    }
+  }
+
   const carregar = useCallback(async (d = data) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/relatorio?data=${d}`)
-      if (!res.ok) throw new Error(`Erro ${res.status}`)
-      setPayload(await res.json())
+      const json = await apiFetch(`/api/relatorio?data=${d}`)
+      setPayload(json)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -69,21 +113,7 @@ export default function Relatorio() {
         <button
           className="btn btn-ghost"
           style={{ padding: '8px 14px', fontSize: '0.6875rem', gap: 6 }}
-          onClick={() => {
-            const token = localStorage.getItem('access_token')
-            fetch(`/api/relatorio/exportar/pdf?data=${data}`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-            })
-              .then(r => r.blob())
-              .then(blob => {
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `relatorio_${data}.pdf`
-                a.click()
-                URL.revokeObjectURL(url)
-              })
-          }}
+          onClick={() => downloadRelatorio(`/api/relatorio/exportar/pdf?data=${data}`, `relatorio_${data}.pdf`)}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -94,21 +124,7 @@ export default function Relatorio() {
         <button
           className="btn btn-ghost"
           style={{ padding: '8px 14px', fontSize: '0.6875rem', gap: 6 }}
-          onClick={() => {
-            const token = localStorage.getItem('access_token')
-            fetch(`/api/relatorio/exportar/csv?data=${data}`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-            })
-              .then(r => r.blob())
-              .then(blob => {
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `relatorio_${data}.csv`
-                a.click()
-                URL.revokeObjectURL(url)
-              })
-          }}
+          onClick={() => downloadRelatorio(`/api/relatorio/exportar/csv?data=${data}`, `relatorio_${data}.csv`)}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -385,11 +401,7 @@ function TabelaRanking({ data }) {
 
   useEffect(() => {
     const inicio = data.substring(0, 7) + '-01'
-    const token = localStorage.getItem('access_token')
-    fetch(`/api/relatorio/ranking?inicio=${inicio}&fim=${data}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-      .then(r => r.json())
+    apiFetch(`/api/relatorio/ranking?inicio=${inicio}&fim=${data}`)
       .then(d => { setRanking(d); setLoadingR(false) })
       .catch(() => setLoadingR(false))
   }, [data])
