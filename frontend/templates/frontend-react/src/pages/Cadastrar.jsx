@@ -106,7 +106,7 @@ export default function Cadastrar() {
   const stepIndex = etapa === 'form' || etapa === 'erro' ? 0 : etapa === 'camera' ? 1 : 2
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto' }}>
+    <div className="page-form-container">
 
       {/* Stepper */}
       <div style={s.stepper}>

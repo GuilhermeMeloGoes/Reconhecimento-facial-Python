@@ -232,14 +232,15 @@ export default function GerenciarUsuarios() {
 
       {/* Modal */}
       {modal && (
-        <>
-          <div style={styles.dim} onClick={() => setModal(null)} />
-          <div style={styles.modal} className="scale-in">
-            <h2 style={styles.modalTitle}>
-              {modal === 'criar' ? 'Novo Usuário' : modal === 'editar' ? 'Editar Usuário' : 'Resetar Senha'}
-            </h2>
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal-container" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {modal === 'criar' ? 'Novo Usuário' : modal === 'editar' ? 'Editar Usuário' : 'Resetar Senha'}
+              </h2>
+            </div>
 
-            {msg && <div style={styles.erroBanner}>{msg}</div>}
+            {msg && <div className="modal-error">{msg}</div>}
 
             {(modal === 'criar' || modal === 'editar') && (
               <>
@@ -287,19 +288,18 @@ export default function GerenciarUsuarios() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button onClick={() => setModal(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
+            <div className="modal-actions">
+              <button onClick={() => setModal(null)} className="btn btn-ghost">Cancelar</button>
               <button
                 onClick={modal === 'criar' ? salvarCriar : modal === 'editar' ? salvarEditar : salvarReset}
                 className="btn btn-primary"
                 disabled={saving}
-                style={{ flex: 1 }}
               >
                 {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   )
@@ -324,25 +324,4 @@ const styles = {
     cursor: 'pointer', background: 'transparent', transition: 'all 0.2s',
   },
   actionBtn: { padding: '6px 10px', fontSize: '0.6875rem' },
-  dim: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
-    backdropFilter: 'blur(6px)', zIndex: 200, animation: 'fadeIn 0.2s ease',
-  },
-  modal: {
-    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-    background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)',
-    borderRadius: 'var(--radius-lg)', padding: 28, zIndex: 201,
-    width: 'min(440px, calc(100vw - 40px))', boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-  },
-  modalTitle: {
-    fontSize: '1.1rem', fontWeight: 600,
-    background: 'var(--gradient-main)', WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-    marginBottom: 20,
-  },
-  erroBanner: {
-    marginBottom: 16, padding: '10px 14px', background: 'var(--danger-bg)',
-    border: '1px solid rgba(255,77,109,0.2)', borderRadius: 'var(--radius-sm)',
-    color: 'var(--danger)', fontSize: '0.8125rem',
-  },
 }

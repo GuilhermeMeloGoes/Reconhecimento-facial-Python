@@ -161,11 +161,12 @@ export default function Alunos() {
 
       {/* Edit modal */}
       {editModal && (
-        <>
-          <div style={s.dim} onClick={() => setEditModal(null)} />
-          <div style={s.modal} className="scale-in">
-            <h2 style={s.modalTitle}>Editar aluno</h2>
-            <p style={s.modalSub}>ID #{editModal.id} · {editModal.matricula}</p>
+        <div className="modal-overlay" onClick={() => setEditModal(null)}>
+          <div className="modal-container" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Editar aluno</h2>
+              <p>ID #{editModal.id} · {editModal.matricula}</p>
+            </div>
 
             <div className="form-group">
               <label className="form-label">Nome completo</label>
@@ -185,14 +186,14 @@ export default function Alunos() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button onClick={() => setEditModal(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
-              <button onClick={salvarEdicao} className="btn btn-primary" disabled={saving} style={{ flex: 1 }}>
+            <div className="modal-actions">
+              <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancelar</button>
+              <button onClick={salvarEdicao} className="btn btn-primary" disabled={saving}>
                 {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <style>{`
@@ -241,41 +242,5 @@ const s = {
     background: 'rgba(255,255,255,0.02)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius-md)',
-  },
-  dim: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.75)',
-    backdropFilter: 'blur(6px)',
-    zIndex: 200,
-    animation: 'fadeIn 0.2s ease',
-  },
-  modal: {
-    position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--glass-border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: 28,
-    zIndex: 201,
-    width: 'min(420px, calc(100vw - 40px))',
-    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-  },
-  modalTitle: {
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    background: 'var(--gradient-main)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-    marginBottom: 4,
-  },
-  modalSub: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    marginBottom: 24,
   },
 }
