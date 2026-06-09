@@ -3,22 +3,22 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 const INITIAL = { nome: '', matricula: '', turma: '' }
 
 const STEPS = [
-  { id: 'form',    label: 'Dados',      num: 1 },
-  { id: 'camera',  label: 'Foto',       num: 2 },
-  { id: 'preview', label: 'Confirmar',  num: 3 },
+  { id: 'form', label: 'Dados', num: 1 },
+  { id: 'camera', label: 'Foto', num: 2 },
+  { id: 'preview', label: 'Confirmar', num: 3 },
 ]
 
 export default function Cadastrar() {
-  const [form, setForm]              = useState(INITIAL)
-  const [etapa, setEtapa]            = useState('form')
-  const [fotoB64, setFotoB64]        = useState(null)
+  const [form, setForm] = useState(INITIAL)
+  const [etapa, setEtapa] = useState('form')
+  const [fotoB64, setFotoB64] = useState(null)
   const [fotoPreview, setFotoPreview] = useState(null)
-  const [mensagem, setMensagem]      = useState('')
-  const [permissao, setPermissao]    = useState(null)
+  const [mensagem, setMensagem] = useState('')
+  const [permissao, setPermissao] = useState(null)
 
-  const videoRef   = useRef(null)
-  const canvasRef  = useRef(null)
-  const streamRef  = useRef(null)
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
 
   function campo(field) {
     return {
@@ -56,15 +56,15 @@ export default function Cadastrar() {
   }, [])
 
   const tirarFoto = useCallback(() => {
-    const video  = videoRef.current
+    const video = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas) return
-    canvas.width  = video.videoWidth  || 640
+    canvas.width = video.videoWidth || 640
     canvas.height = video.videoHeight || 480
     const ctx = canvas.getContext('2d')
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-    const b64     = dataUrl.split(',')[1]
+    const b64 = dataUrl.split(',')[1]
     setFotoPreview(dataUrl)
     setFotoB64(b64)
     pararCamera()
@@ -75,9 +75,10 @@ export default function Cadastrar() {
     setEtapa('enviando')
     setMensagem('Processando reconhecimento facial…')
     try {
-      const res  = await fetch('/api/cadastrar', {
+      const token = localStorage.getItem('access_token')
+      const res = await fetch('/api/cadastrar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ ...form, imagem_b64: fotoB64 }),
       })
       const data = await res.json()
