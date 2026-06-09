@@ -6,7 +6,8 @@ export default function Alunos() {
   const { data: alunos = [], loading, error, refetch } = useApi('/api/alunos')
   const [editModal, setEditModal] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [editForm, setEditForm] = useState({ nome: '', turma: '' })
+  const [editForm, setEditForm] = useState({ nome: '', turma: '', matricula: '' })
+  const [query, setQuery] = useState('')
 
   function formatData(v) {
     if (!v) return '—'
@@ -15,7 +16,12 @@ export default function Alunos() {
 
   function abrirEditar(a) {
     setEditModal(a)
-    setEditForm({ nome: a.nome || '', turma: a.turma || '' })
+    setEditForm({ nome: a.nome || '', turma: a.turma || '', matricula: a.matricula || '' })
+  }
+
+  function abrirCriar() {
+    setEditModal({ id: null, nome: '', turma: '', matricula: '' })
+    setEditForm({ nome: '', turma: '', matricula: '' })
   }
 
   async function deletarAluno(id, nome) {
@@ -30,7 +36,11 @@ export default function Alunos() {
     if (!editForm.nome.trim()) return alert('Nome é obrigatório')
     setSaving(true)
     try {
-      await apiFetch(`/api/alunos/${editModal.id}`, { method: 'PUT', body: JSON.stringify(editForm) })
+      if (editModal && editModal.id) {
+        await apiFetch(`/api/alunos/${editModal.id}`, { method: 'PUT', body: JSON.stringify(editForm) })
+      } else {
+        await apiFetch('/api/alunos', { method: 'POST', body: JSON.stringify(editForm) })
+      }
       setEditModal(null)
       refetch()
     } catch (e) { alert(e.message) } finally { setSaving(false) }
@@ -49,24 +59,35 @@ export default function Alunos() {
     </div>
   )
 
+  const filtered = alunos.filter(a => {
+    if (!query.trim()) return true
+    const q = query.toLowerCase()
+    return (a.nome || '').toLowerCase().includes(q) || String(a.matricula || '').toLowerCase().includes(q)
+  })
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }} className="fade-in">
         <div>
+          <h1 style={{ margin: 0 }}>Alunos</h1>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {alunos.length} aluno{alunos.length !== 1 ? 's' : ''} cadastrado{alunos.length !== 1 ? 's' : ''}
           </span>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input className="form-input" placeholder="Buscar por nome ou matrícula" value={query} onChange={e => setQuery(e.target.value)} style={{ minWidth: 220 }} />
+          <button className="btn btn-primary" onClick={abrirCriar}>Adicionar</button>
+        </div>
       </div>
 
       <div className="card fade-in">
-        {alunos.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={s.empty}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.5, marginBottom: 16 }}>
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
             </svg>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Nenhum aluno cadastrado.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Nenhum aluno encontrado.</p>
           </div>
         ) : (
           <>
@@ -84,22 +105,22 @@ export default function Alunos() {
                     </tr>
                   </thead>
                   <tbody>
-                    {alunos.map((a, i) => (
-                      <tr key={a.id} className="fade-in" style={{ animationDelay: `${i * 40}ms` }}>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.id}</td>
+                    {filtered.map((a, i) => (
+                      <tr key={a.id || i} className="fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.id || '—'}</td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={s.avatar}>{a.nome.charAt(0).toUpperCase()}</div>
+                            <div style={s.avatar}>{(a.nome||'').charAt(0).toUpperCase()}</div>
                             <strong style={{ color: 'var(--text-primary)' }}>{a.nome}</strong>
                           </div>
                         </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{a.matricula}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{a.matricula || '—'}</td>
                         <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>{a.turma || '—'}</td>
                         <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatData(a.cadastrado_em)}</td>
                         <td>
                           <div className="table-actions">
-                            <button onClick={() => abrirEditar(a)} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.6875rem' }}>Editar</button>
-                            <button onClick={() => deletarAluno(a.id, a.nome)} className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.6875rem' }}>Remover</button>
+                            <button onClick={() => abrirEditar(a)} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>Editar</button>
+                            <button onClick={() => deletarAluno(a.id, a.nome)} className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>Remover</button>
                           </div>
                         </td>
                       </tr>
@@ -110,18 +131,18 @@ export default function Alunos() {
             </div>
 
             <div className="alunos-cards-mobile">
-              {alunos.map((a, i) => (
-                <div key={a.id} className="fade-in" style={{ ...s.mobileCard, animationDelay: `${i * 40}ms` }}>
+              {filtered.map((a, i) => (
+                <div key={a.id || i} className="fade-in" style={{ ...s.mobileCard, animationDelay: `${i * 40}ms` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={s.avatar}>{a.nome.charAt(0).toUpperCase()}</div>
+                    <div style={s.avatar}>{(a.nome||'').charAt(0).toUpperCase()}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{a.nome}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{a.matricula} · {a.turma || '—'}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.nome}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{a.matricula || '—'} · {a.turma || '—'}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => abrirEditar(a)} className="btn btn-ghost" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }}>Editar</button>
-                    <button onClick={() => deletarAluno(a.id, a.nome)} className="btn btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.75rem' }}>Remover</button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={() => abrirEditar(a)} className="btn btn-ghost" style={{ flex: '1 1 120px', padding: '8px', fontSize: '0.85rem' }}>Editar</button>
+                    <button onClick={() => deletarAluno(a.id, a.nome)} className="btn btn-danger" style={{ flex: '1 1 120px', padding: '8px', fontSize: '0.85rem' }}>Remover</button>
                   </div>
                 </div>
               ))}
@@ -133,8 +154,8 @@ export default function Alunos() {
       {editModal && (
         <Modal onClose={() => setEditModal(null)}>
           <div className="modal-header">
-            <h2>Editar aluno</h2>
-            <p>ID #{editModal.id} · {editModal.matricula}</p>
+            <h2>{editModal && editModal.id ? 'Editar aluno' : 'Adicionar aluno'}</h2>
+            {editModal && editModal.id && <p>ID #{editModal.id} · {editModal.matricula}</p>}
           </div>
 
           <div className="form-group">
@@ -145,6 +166,10 @@ export default function Alunos() {
             <label className="form-label">Turma</label>
             <input className="form-input" value={editForm.turma} onChange={e => setEditForm(f => ({ ...f, turma: e.target.value }))} />
           </div>
+          <div className="form-group">
+            <label className="form-label">Matrícula</label>
+            <input className="form-input" value={editForm.matricula} onChange={e => setEditForm(f => ({ ...f, matricula: e.target.value }))} />
+          </div>
 
           <div className="modal-actions">
             <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancelar</button>
@@ -154,11 +179,20 @@ export default function Alunos() {
       )}
 
       <style>{`
+        .table-responsive { overflow: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        th, td { padding: 12px 8px; text-align: left; }
+        .table-actions { display: flex; gap: 8px; justify-content: flex-end; }
         .alunos-cards-mobile { display: none; }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .alunos-table-desktop { display: none; }
           .alunos-cards-mobile { display: flex; flex-direction: column; gap: 10px; }
+          table { min-width: 0; }
+        }
+
+        @media (max-width: 520px) {
+          .alunos-toolbar input { min-width: 120px; }
         }
       `}</style>
     </>
@@ -177,21 +211,21 @@ const s = {
     marginBottom: 16,
   },
   avatar: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: '50%',
     background: 'var(--gradient-main)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontFamily: 'var(--font-mono)',
-    fontSize: '0.75rem',
+    fontSize: '0.9rem',
     fontWeight: 700,
     color: '#fff',
     flexShrink: 0,
   },
   mobileCard: {
-    padding: 16,
+    padding: 14,
     background: 'rgba(255,255,255,0.02)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius-md)',
