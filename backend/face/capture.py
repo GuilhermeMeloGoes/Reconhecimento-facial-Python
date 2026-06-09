@@ -19,19 +19,31 @@ def processar_imagem_base64(imagem_b64):
 
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
     frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    print(f"[CADASTRO-MOBILE] Imagem recebida: {frame.shape}")
     if frame is None:
         return None, None
 
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+    h, w = rgb.shape[:2]
+
+    if w > 800:
+        scale = 800 / w
+        rgb = cv2.resize(
+            rgb,
+            (int(w * scale), int(h * scale))
+        )
+
     locais = face_recognition.face_locations(rgb, number_of_times_to_upsample=1, model=FACE_MODEL)
+    print("[CADASTRO-MOBILE] Iniciando face_locations")
     if not locais:
         locais = face_recognition.face_locations(rgb, number_of_times_to_upsample=0, model=FACE_MODEL)
     if not locais:
         print("[CADASTRO-MOBILE] Nenhum rosto detectado na imagem enviada")
         return None, None
 
-    encs = face_recognition.face_encodings(rgb, locais, num_jitters=3, model="large")
+    encs = face_recognition.face_encodings(rgb, locais, num_jitters=1)
+    print("[CADASTRO-MOBILE] Iniciando face_encodings")
     if not encs:
         return None, None
 
