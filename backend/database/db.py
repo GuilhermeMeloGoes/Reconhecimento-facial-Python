@@ -214,16 +214,17 @@ def criar_tabelas(conn: DBConnection):
     conn.commit()
     logger.info("MySQL: tabelas verificadas/criadas com sucesso.")
 
-
 def salvar_aluno(conn: DBConnection, nome, matricula, turma, embedding, foto_path=None):
     blob = pickle.dumps(embedding)
-    cursor = conn.execute(
-        "INSERT INTO alunos (nome, matricula, turma, embedding, foto_path) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (nome, matricula, turma, blob, foto_path),
-    )
-    conn.commit()
-    return cursor.lastrowid
+    # Abre o cursor e garante o fechamento automático ao sair do bloco
+    with conn._raw.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO alunos (nome, matricula, turma, embedding, foto_path) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (nome, matricula, turma, blob, foto_path),
+        )
+        conn.commit()
+        return cursor.lastrowid
 
 
 def carregar_alunos(conn: DBConnection):
@@ -254,7 +255,7 @@ def listar_alunos(conn: DBConnection):
         "FROM alunos ORDER BY nome"
     )
 
-    
+
 def deletar_aluno(conn, aluno_id):
     conn.execute("DELETE FROM registros WHERE aluno_id = %s", (aluno_id,))
     conn.execute("DELETE FROM alunos WHERE id = %s", (aluno_id,))
