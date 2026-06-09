@@ -162,7 +162,7 @@ export default function GerenciarUsuarios() {
           <>
             {/* Desktop table */}
             <div className="usuarios-table-desktop">
-              <div style={{ overflowX: 'auto' }}>
+              <div className="table-responsive">
                 <table>
                   <thead>
                     <tr>
@@ -221,7 +221,7 @@ export default function GerenciarUsuarios() {
                           </button>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <div className="table-actions">
                             <button onClick={() => abrirEditar(u)} className="btn btn-ghost" style={styles.actionBtn}>Editar</button>
                             <button onClick={() => abrirReset(u)} className="btn btn-ghost" style={styles.actionBtn}>Senha</button>
                             <button onClick={() => deletar(u)} className="btn btn-danger" style={styles.actionBtn}>
@@ -271,7 +271,7 @@ export default function GerenciarUsuarios() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => toggleAtivo(u)}
                       style={{
@@ -290,13 +290,15 @@ export default function GerenciarUsuarios() {
                       {u.ativo ? 'Ativo' : 'Inativo'}
                     </button>
                     <div style={{ flex: 1 }} />
-                    <button onClick={() => abrirEditar(u)} className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.7rem' }}>Editar</button>
-                    <button onClick={() => abrirReset(u)} className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.7rem' }}>Senha</button>
-                    <button onClick={() => deletar(u)} className="btn btn-danger" style={{ padding: '6px 10px', fontSize: '0.7rem' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => abrirEditar(u)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: '0.75rem' }}>Editar</button>
+                      <button onClick={() => abrirReset(u)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: '0.75rem' }}>Senha</button>
+                      <button onClick={() => deletar(u)} className="btn btn-danger" style={{ padding: '8px 12px', fontSize: '0.75rem' }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <polyline points="3 6 5 6 21 6" /><path d="M19 6l-2 14H7L5 6" />
                       </svg>
                     </button>
+                    </div>
                   </div>
                 </div>
               ))}

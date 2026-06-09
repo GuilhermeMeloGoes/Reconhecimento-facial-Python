@@ -92,7 +92,8 @@ export default function AdminVinculos() {
             {loading && <div>Carregando...</div>}
             {!loading && links.length === 0 && <div style={{ padding: 12 }}>Nenhum vínculo cadastrado.</div>}
             {!loading && links.length > 0 && (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr><th>Usuário</th><th>Aluno</th><th>Matricula</th><th></th></tr>
                 </thead>
@@ -102,11 +103,12 @@ export default function AdminVinculos() {
                       <td>{l.usuario_nome} ({l.usuario_id})</td>
                       <td>{l.aluno_nome}</td>
                       <td>{l.matricula}</td>
-                      <td style={{ textAlign: 'right' }}><button className="btn btn-ghost" onClick={() => remover(l)}>Remover</button></td>
+                      <td className="table-actions" style={{ justifyContent: 'flex-end' }}><button className="btn btn-ghost" onClick={() => remover(l)}>Remover</button></td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
         </div>

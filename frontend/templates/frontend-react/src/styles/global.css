@@ -525,7 +525,7 @@ tbody tr:hover td {
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 200;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -615,11 +615,12 @@ tbody tr:hover td {
   .modal-overlay {
     padding: 12px;
     align-items: flex-end;
+    justify-content: center;
   }
 
   .modal-container {
-    padding: 22px;
-    max-width: 100%;
+    padding: 18px 18px 22px;
+    max-width: calc(100% - 24px);
     border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
     max-height: calc(100vh - 24px);
     max-height: calc(100dvh - 24px);
@@ -628,7 +629,8 @@ tbody tr:hover td {
 
 @media (max-width: 480px) {
   .modal-container {
-    padding: 18px;
+    padding: 14px;
+    width: calc(100% - 18px);
   }
 
   .modal-actions {
@@ -704,8 +706,29 @@ tbody tr:hover td {
   h1 { font-size: 1.5rem; }
   h2 { font-size: 1.2rem; }
 
-  th:nth-child(n+4),
-  td:nth-child(n+4) {
-    display: none;
+  /* Don't forcibly hide columns on very small screens; allow horizontal scroll
+     or use mobile card lists provided by pages. Hiding columns can remove
+     important context — prefer scroll/stacking instead. */
+
+  /* Utility to make tables scrollable */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Actions in table rows should wrap and become full-width on very small screens */
+  .table-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .table-actions .btn {
+    min-width: 0;
+  }
+
+  @media (max-width: 420px) {
+    .table-actions .btn { flex: 1 1 100%; }
   }
 }

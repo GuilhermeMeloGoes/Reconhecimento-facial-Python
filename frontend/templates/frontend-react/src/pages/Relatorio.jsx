@@ -209,7 +209,8 @@ export default function Relatorio() {
 function TabelaRegistros({ registros, data }) {
   if (registros.length === 0) return <Vazio msg={`Nenhum registro em ${data}.`} />
   return (
-    <table>
+    <div className="table-responsive">
+      <table>
       <thead><tr>
         <th>Horário</th><th>Nome</th><th>Matrícula</th><th>Turma</th><th>Evento</th>
       </tr></thead>
@@ -236,6 +237,7 @@ function TabelaRegistros({ registros, data }) {
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -251,7 +253,8 @@ function TabelaFaltas({ faltas, data }) {
         </svg>
         <strong>{faltas.length}</strong> aluno{faltas.length > 1 ? 's' : ''} sem registro em {data}
       </div>
-      <table>
+      <div className="table-responsive">
+        <table>
         <thead><tr><th>Nome</th><th>Matrícula</th><th>Turma</th><th>Status</th></tr></thead>
         <tbody>
           {faltas.map((a, i) => (
@@ -267,7 +270,8 @@ function TabelaFaltas({ faltas, data }) {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </>
   )
 }
@@ -283,7 +287,8 @@ function TabelaOcorrencias({ atrasos, saidas, data }) {
         <>
           <SectionHeader icon={<IconClock color="#FFB800" />} label={`Atrasos (${atrasos.length})`} color="var(--warning)"
             desc="Alunos que chegaram após o horário esperado" />
-          <table style={{ marginBottom: 28 }}>
+          <div className="table-responsive">
+            <table style={{ marginBottom: 28 }}>
             <thead><tr><th>Chegada</th><th>Nome</th><th>Matrícula</th><th>Turma</th><th>Atraso</th></tr></thead>
             <tbody>
               {atrasos.map((a, i) => (
@@ -302,7 +307,8 @@ function TabelaOcorrencias({ atrasos, saidas, data }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </>
       )}
 
@@ -310,7 +316,8 @@ function TabelaOcorrencias({ atrasos, saidas, data }) {
         <>
           <SectionHeader icon={<IconDoor color="#E066FF" />} label={`Saídas antecipadas (${saidas.length})`} color="var(--purple)"
             desc="Alunos que saíram antes do horário previsto" />
-          <table>
+          <div className="table-responsive">
+            <table>
             <thead><tr><th>Saída</th><th>Nome</th><th>Matrícula</th><th>Turma</th><th>Antecipação</th></tr></thead>
             <tbody>
               {saidas.map((ss, i) => (
@@ -329,7 +336,8 @@ function TabelaOcorrencias({ atrasos, saidas, data }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </>
       )}
     </div>

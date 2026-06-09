@@ -7,7 +7,15 @@ export default function Modal({ children, onClose }) {
       if (e.key === 'Escape') onClose && onClose()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+
+    // lock scroll
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
   }, [onClose])
 
   return createPortal(

@@ -83,7 +83,8 @@ export default function Alunos() {
           <>
             {/* Desktop table */}
             <div className="alunos-table-desktop">
-              <table>
+              <div className="table-responsive">
+                <table>
                 <thead>
                   <tr>
                     <th style={{ width: 50 }}>#</th>
@@ -108,7 +109,7 @@ export default function Alunos() {
                       <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>{a.turma || '—'}</td>
                       <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatData(a.cadastrado_em)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <div className="table-actions">
                           <button onClick={() => abrirEditar(a)} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.6875rem' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -124,7 +125,7 @@ export default function Alunos() {
                             </svg>
                             Remover
                           </button>
-                        </div>
+                          </div>
                       </td>
                     </tr>
                   ))}
