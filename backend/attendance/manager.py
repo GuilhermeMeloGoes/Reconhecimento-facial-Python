@@ -43,22 +43,12 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
     if aluno_id is None:
         return None
 
-    if not _dentro_do_horario_permitido():
-        hora_atual = datetime.now().strftime("%H:%M")
-        return {
-            "registrado":   False,
-            "tipo":         None,
-            "motivo":       (
-                f"Registro bloqueado: horário atual ({hora_atual}) está fora da "
-                f"janela permitida ({HORA_PERMITIDA_INICIO.strftime('%H:%M')}–"
-                f"{HORA_PERMITIDA_FIM.strftime('%H:%M')})."
-            ),
-            "fora_horario": True,
-            "aluno":        {"nome": nome, "matricula": matricula},
-        }
+    # Permitir reconhecimento a qualquer horário, mas registrar se foi fora do
+    # intervalo escolar para posterior validação/relatórios.
+    agora = datetime.now()
+    fora_horario = not _dentro_do_horario_permitido()
 
     ultimo = db.ultimo_registro(conn, aluno_id)
-    agora  = datetime.now()
 
     if not tipo_forcado:
         if ultimo:
@@ -72,6 +62,7 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
                     "tipo": None,
                     "motivo": f"Aguarde {minutos_restantes} min para novo registro",
                     "aluno": {"nome": nome, "matricula": matricula},
+                    "fora_horario": fora_horario,
                 }
 
             tipo = "saida" if ultimo["tipo"] == "entrada" else "entrada"
@@ -88,6 +79,7 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
                     "tipo": None,
                     "motivo": f"{nome} já possui uma ENTRADA registrada hoje",
                     "aluno": {"nome": nome, "matricula": matricula},
+                    "fora_horario": fora_horario,
                 }
             if tipo_forcado == "saida" and ultimo["tipo"] == "saida" and ultimo_data == hoje:
                 return {
@@ -95,6 +87,7 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
                     "tipo": None,
                     "motivo": f"{nome} já registrou SAÍDA hoje",
                     "aluno": {"nome": nome, "matricula": matricula},
+                    "fora_horario": fora_horario,
                 }
         elif tipo_forcado == "saida":
             return {
@@ -102,6 +95,7 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
                 "tipo": None,
                 "motivo": "Nenhuma entrada encontrada para este aluno hoje",
                 "aluno": {"nome": nome, "matricula": matricula},
+                "fora_horario": fora_horario,
             }
 
         tipo = tipo_forcado
@@ -117,6 +111,7 @@ def processar_reconhecimento(conn, resultado_facial, tipo_forcado=None):
         "tipo":        tipo,
         "timestamp":   agora.isoformat(),
         "motivo":      "ok",
+        "fora_horario": fora_horario,
         "aluno": {
             "id":        aluno_id,
             "nome":      nome,
