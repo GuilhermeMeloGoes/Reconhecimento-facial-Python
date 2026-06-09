@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApi, apiFetch } from '../hooks/useApi'
+import Modal from '../components/Modal'
 
 export default function Alunos() {
   const { data: alunos = [], loading, error, refetch } = useApi('/api/alunos')
@@ -161,39 +162,37 @@ export default function Alunos() {
 
       {/* Edit modal */}
       {editModal && (
-        <div className="modal-overlay" onClick={() => setEditModal(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Editar aluno</h2>
-              <p>ID #{editModal.id} · {editModal.matricula}</p>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Nome completo</label>
-              <input
-                className="form-input"
-                value={editForm.nome}
-                onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))}
-                autoFocus
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Turma</label>
-              <input
-                className="form-input"
-                value={editForm.turma}
-                onChange={e => setEditForm(f => ({ ...f, turma: e.target.value }))}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancelar</button>
-              <button onClick={salvarEdicao} className="btn btn-primary" disabled={saving}>
-                {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
-              </button>
-            </div>
+        <Modal onClose={() => setEditModal(null)}>
+          <div className="modal-header">
+            <h2>Editar aluno</h2>
+            <p>ID #{editModal.id} · {editModal.matricula}</p>
           </div>
-        </div>
+
+          <div className="form-group">
+            <label className="form-label">Nome completo</label>
+            <input
+              className="form-input"
+              value={editForm.nome}
+              onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Turma</label>
+            <input
+              className="form-input"
+              value={editForm.turma}
+              onChange={e => setEditForm(f => ({ ...f, turma: e.target.value }))}
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancelar</button>
+            <button onClick={salvarEdicao} className="btn btn-primary" disabled={saving}>
+              {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       <style>{`

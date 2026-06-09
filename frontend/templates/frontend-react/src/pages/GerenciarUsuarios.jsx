@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApi, apiFetch } from '../hooks/useApi'
+import Modal from '../components/Modal'
 
 export default function GerenciarUsuarios() {
   const { data: usuarios = [], loading, error, refetch } = useApi('/api/auth/usuarios')
@@ -319,74 +320,72 @@ export default function GerenciarUsuarios() {
 
       {/* Modal */}
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>
-                {modal === 'criar' ? 'Novo Usuário' : modal === 'editar' ? 'Editar Usuário' : 'Resetar Senha'}
-              </h2>
-            </div>
+        <Modal onClose={() => setModal(null)}>
+          <div className="modal-header">
+            <h2>
+              {modal === 'criar' ? 'Novo Usuário' : modal === 'editar' ? 'Editar Usuário' : 'Resetar Senha'}
+            </h2>
+          </div>
 
-            {msg && <div className="modal-error">{msg}</div>}
+          {msg && <div className="modal-error">{msg}</div>}
 
-            {(modal === 'criar' || modal === 'editar') && (
-              <>
+          {(modal === 'criar' || modal === 'editar') && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Nome</label>
+                <input className="form-input" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} autoFocus />
+              </div>
+              {modal === 'criar' && (
                 <div className="form-group">
-                  <label className="form-label">Nome</label>
-                  <input className="form-input" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} autoFocus />
+                  <label className="form-label">Email</label>
+                  <input className="form-input" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
-                {modal === 'criar' && (
-                  <div className="form-group">
-                    <label className="form-label">Email</label>
-                    <input className="form-input" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-                  </div>
-                )}
-                {modal === 'criar' && (
-                  <div className="form-group">
-                    <label className="form-label">Senha</label>
-                    <input className="form-input" type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} />
-                  </div>
-                )}
+              )}
+              {modal === 'criar' && (
                 <div className="form-group">
-                  <label className="form-label">Perfil</label>
-                  <select className="form-input" value={form.perfil} onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))}>
-                    <option value="admin">Admin</option>
-                    <option value="aluno">Aluno / Pais</option>
+                  <label className="form-label">Senha</label>
+                  <input className="form-input" type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} />
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label">Perfil</label>
+                <select className="form-input" value={form.perfil} onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))}>
+                  <option value="admin">Admin</option>
+                  <option value="aluno">Aluno / Pais</option>
+                </select>
+              </div>
+              {form.perfil === 'aluno' && (
+                <div className="form-group">
+                  <label className="form-label">Vincular a aluno</label>
+                  <select className="form-input" value={form.aluno_id} onChange={e => setForm(f => ({ ...f, aluno_id: e.target.value }))}>
+                    <option value="">— Selecionar —</option>
+                    {alunos.map(a => (
+                      <option key={a.id} value={a.id}>{a.nome} ({a.matricula})</option>
+                    ))}
                   </select>
                 </div>
-                {form.perfil === 'aluno' && (
-                  <div className="form-group">
-                    <label className="form-label">Vincular a aluno</label>
-                    <select className="form-input" value={form.aluno_id} onChange={e => setForm(f => ({ ...f, aluno_id: e.target.value }))}>
-                      <option value="">— Selecionar —</option>
-                      {alunos.map(a => (
-                        <option key={a.id} value={a.id}>{a.nome} ({a.matricula})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </>
+          )}
 
-            {modal === 'reset' && (
-              <div className="form-group">
-                <label className="form-label">Nova senha para {selected?.nome}</label>
-                <input className="form-input" type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} autoFocus />
-              </div>
-            )}
-
-            <div className="modal-actions">
-              <button onClick={() => setModal(null)} className="btn btn-ghost">Cancelar</button>
-              <button
-                onClick={modal === 'criar' ? salvarCriar : modal === 'editar' ? salvarEditar : salvarReset}
-                className="btn btn-primary"
-                disabled={saving}
-              >
-                {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
-              </button>
+          {modal === 'reset' && (
+            <div className="form-group">
+              <label className="form-label">Nova senha para {selected?.nome}</label>
+              <input className="form-input" type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} autoFocus />
             </div>
+          )}
+
+          <div className="modal-actions">
+            <button onClick={() => setModal(null)} className="btn btn-ghost">Cancelar</button>
+            <button
+              onClick={modal === 'criar' ? salvarCriar : modal === 'editar' ? salvarEditar : salvarReset}
+              className="btn btn-primary"
+              disabled={saving}
+            >
+              {saving ? <><span className="spinner" />Salvando…</> : 'Salvar'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   )
